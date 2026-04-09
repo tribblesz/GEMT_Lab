@@ -12,18 +12,12 @@ tags:
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/navbar", {});
 ```
-srert
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Instrument Configuration
-type note(tmp-instrument-configuration-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Instrument Configuration.md
-templater true
-class accent-button
-```
+> [!info] GUI writer entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Instrument Configuration Writer](http://127.0.0.1:8765/?form=instrument-configuration).
 
 ```dataview
 TABLE WITHOUT ID

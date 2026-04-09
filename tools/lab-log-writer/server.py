@@ -1,0 +1,1000 @@
+from __future__ import annotations
+
+import json
+import re
+import textwrap
+import webbrowser
+from datetime import datetime
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+
+ROOT = Path(__file__).resolve().parent
+REPO_ROOT = ROOT.parents[1]
+VAULT_ROOT = REPO_ROOT / "ELN_vault"
+SETTINGS_PATH = VAULT_ROOT / "assets" / "ELN Settings.md"
+HOST = "127.0.0.1"
+PORT = 8765
+
+
+def read_file(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def write_file(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def sanitize_file_name(value: str) -> str:
+    safe = re.sub(r'[\\/:*?"<>|]+', "-", str(value or "").strip())
+    safe = re.sub(r"\s+", " ", safe).strip()
+    return safe or "Untitled"
+
+
+def slugify(value: str) -> str:
+    return re.sub(r"\s+", "_", sanitize_file_name(value))
+
+
+def yaml_string(value: str, fallback: str = "") -> str:
+    raw = fallback if value in (None, "") else str(value)
+    escaped = raw.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").strip()
+    return f'"{escaped}"'
+
+
+def yaml_list(items: list[str], indent: int = 2, fallback: str | None = None) -> str:
+    values = [str(item).strip() for item in items if str(item).strip()]
+    if not values and fallback is not None:
+        values = [fallback]
+    if not values:
+        return "[]"
+    prefix = " " * indent
+    return "\n".join(f"{prefix}- {yaml_string(item)}" for item in values)
+
+
+def current_timestamp() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
+def current_date() -> str:
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def count_indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def find_block(lines: list[str], key: str, indent: int = 0) -> list[str]:
+    target = f"{' ' * indent}{key}:"
+    for index, line in enumerate(lines):
+        if line == target:
+            base_indent = count_indent(line)
+            block: list[str] = []
+            for subline in lines[index + 1 :]:
+                if subline.strip() == "":
+                    block.append(subline)
+                    continue
+                if count_indent(subline) <= base_indent:
+                    break
+                block.append(subline)
+            return block
+    return []
+
+
+def parse_mapping(block: list[str], indent: int) -> dict[str, str]:
+    data: dict[str, str] = {}
+    prefix = " " * indent
+    for line in block:
+        if not line.startswith(prefix) or count_indent(line) != indent:
+            continue
+        content = line[indent:]
+        if ":" not in content:
+            continue
+        key, value = content.split(":", 1)
+        data[key.strip()] = value.strip()
+    return data
+
+
+def parse_list_from_block(block: list[str], key: str, indent: int) -> list[str]:
+    target = f"{' ' * indent}{key}:"
+    values: list[str] = []
+    for index, line in enumerate(block):
+        if line == target:
+            base_indent = count_indent(line)
+            for subline in block[index + 1 :]:
+                stripped = subline.strip()
+                if stripped == "":
+                    continue
+                if count_indent(subline) <= base_indent:
+                    break
+                item = subline.strip()
+                if item.startswith("- "):
+                    values.append(item[2:].strip())
+            break
+    return values
+
+
+def parse_settings() -> dict[str, object]:
+    text = read_file(SETTINGS_PATH)
+    lines = text.splitlines()
+
+    folders = parse_mapping(find_block(lines, "folder"), 2)
+    series_block = find_block(lines, "experiment series")
+    gas_block = find_block(lines, "gas")
+    gauge_block = find_block(lines, "gauge")
+    exp_log_block = find_block(lines, "experiment log")
+    mcp_block = find_block(lines, "mcp image log")
+    ion_block = find_block(lines, "ion column image log")
+    inst_block = find_block(lines, "instrument configuration")
+    specimen_block = find_block(lines, "specimen")
+
+    settings = {
+        "eln_version": "0.5.0",
+        "folders": folders,
+        "experiment_series_types": parse_list_from_block(series_block, "type", 2),
+        "experiment_series_statuses": parse_list_from_block(series_block, "status", 2),
+        "gases": parse_list_from_block(gas_block, "allowed", 2),
+        "experiment_log_statuses": parse_list_from_block(exp_log_block, "status", 2),
+        "experiment_log_data_types": parse_list_from_block(exp_log_block, "data types", 2),
+        "mcp_statuses": parse_list_from_block(mcp_block, "status", 2),
+        "mcp_formats": parse_list_from_block(mcp_block, "image format", 2),
+        "ion_statuses": parse_list_from_block(ion_block, "status", 2),
+        "ion_signal_sources": parse_list_from_block(ion_block, "signal source", 2),
+        "ion_formats": parse_list_from_block(ion_block, "image format", 2),
+        "instrument_config_types": parse_list_from_block(inst_block, "type", 2),
+        "specimen_types": parse_list_from_block(specimen_block, "type", 2),
+        "main_chamber_gauge": parse_mapping(find_block(gauge_block, "main chamber", 2), 4).get("name", "Ion Gauge"),
+        "load_lock_gauge": parse_mapping(find_block(gauge_block, "load lock", 2), 4).get("name", "LL Wide Range Gauge"),
+        "ion_column_gauge": parse_mapping(find_block(gauge_block, "ion column", 2), 4).get("name", "Ion Column Wide Range Gauge"),
+    }
+    return settings
+
+
+def note_choices(folder_key: str) -> list[str]:
+    settings = parse_settings()
+    folder = settings["folders"].get(folder_key, "")
+    if not folder:
+        return []
+    path = VAULT_ROOT / folder
+    if not path.exists():
+        return []
+    return sorted(
+        file.stem
+        for file in path.rglob("*.md")
+        if "assets" not in file.parts and not file.name.startswith(".")
+    )
+
+
+def frontmatter(content: str) -> str:
+    return f"---\n{content.strip()}\n---"
+
+
+def build_experiment_series(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    series_name = str(payload.get("seriesName", "")).strip() or "Experiment Series"
+    abbreviation = str(payload.get("abbreviation", "")).strip() or slugify(series_name)[:12]
+    folder = VAULT_ROOT / settings["folders"].get("experiment series", "Experiment Series") / sanitize_file_name(series_name)
+    file_path = folder / f"{sanitize_file_name(series_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+  - dashboard
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: experiment-series
+tags:
+  - "#experiment-series"
+series:
+  name: {yaml_string(series_name)}
+  abbreviation: {yaml_string(abbreviation, 'N/A')}
+  type: {yaml_string(str(payload.get('seriesType', 'integration status')), 'integration status')}
+  status: {yaml_string(str(payload.get('seriesStatus', 'planned')), 'planned')}
+  purpose: {yaml_string(str(payload.get('purpose', '')))}
+  independent_variables: {yaml_string(str(payload.get('independentVariables', '')))}
+  dependent_variables: {yaml_string(str(payload.get('dependentVariables', '')))}
+  data_types_recorded:
+    - "oscilloscope traces"
+    - "digital logging"
+    - "MCP images"
+    - "raw MCP hit files"
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Experiment Series Summary
+
+        | Field | Value |
+        | --- | --- |
+        | Series | {series_name} |
+        | Abbreviation | {abbreviation} |
+        | Type | {str(payload.get("seriesType", "")).strip()} |
+        | Status | {str(payload.get("seriesStatus", "")).strip()} |
+        | Purpose | {str(payload.get("purpose", "")).strip()} |
+
+        ## Intended Scope
+
+        ### Variables
+
+        - **Independent:** {str(payload.get("independentVariables", "")).strip()}
+        - **Dependent:** {str(payload.get("dependentVariables", "")).strip()}
+
+        ### Parameter Ranges
+
+        - Minimum and maximum operating ranges:
+        - Planned step sizes:
+        - Measurement limits or restrictions:
+
+        ### Emergency Stop Conditions
+
+        - List all non-interlock abort conditions here.
+        - Include leakage current, arcing, pressure spikes, or thermal excursions.
+
+        ### Data Types Expected
+
+        - Oscilloscope traces
+        - Digital UI logging
+        - MCP images
+        - Raw MCP hit files
+        - Other:
+
+        ## Planned Experiment Logs
+
+        ```dataview
+        TABLE WITHOUT ID
+          file.link as "Experiment Log",
+          experiment.log_id as "Log ID",
+          specimen.id as "Specimen ID",
+          experiment.status as "Status",
+          experiment.date_time as "Date / Time",
+          file.mtime as "Modified"
+        FROM #experiment-log AND !"assets"
+        WHERE experiment.series_name = this.series.name
+        SORT file.mtime DESC
+        ```
+
+        ## Linked MCP Image Logs
+
+        ```dataview
+        TABLE WITHOUT ID
+          file.link as "MCP Image Log",
+          image.parent_experiment_log as "Experiment Log",
+          image.sequence_number as "Sequence",
+          image.date_time as "Date / Time",
+          file.mtime as "Modified"
+        FROM #mcp-image-log AND !"assets"
+        WHERE contains(image.experiment_series_number, this.series.name) OR contains(image.parent_experiment_log, this.series.name)
+        SORT file.mtime DESC
+        ```
+
+        ## Linked Ion Column Image Logs
+
+        ```dataview
+        TABLE WITHOUT ID
+          file.link as "Ion Column Image Log",
+          image.parent_experiment_log as "Experiment Log",
+          image.sequence_number as "Sequence",
+          image.date_time as "Date / Time",
+          file.mtime as "Modified"
+        FROM #ion-column-image-log AND !"assets"
+        WHERE contains(image.experiment_series_number, this.series.name) OR contains(image.parent_experiment_log, this.series.name)
+        SORT file.mtime DESC
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_experiment_log(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    date_time = payload.get("dateTime") or current_timestamp()
+    series_name = str(payload.get("seriesName", "")).strip()
+    series_number = str(payload.get("seriesNumber", "")).strip()
+    operators = [value.strip() for value in payload.get("operators", []) if str(value).strip()]
+    gases = [value.strip() for value in payload.get("gasesIntroduced", []) if str(value).strip()]
+    data_types = [value.strip() for value in payload.get("dataTypesRecorded", []) if str(value).strip()]
+    raw_files = payload.get("rawDataFiles", [])
+    raw_rows = []
+    for row in raw_files:
+        raw_rows.append(
+            f"| {row.get('fileName', '').strip()} | {row.get('fileType', '').strip()} | {row.get('link', '').strip()} |"
+        )
+    if not raw_rows:
+        raw_rows.append("|  |  |  |")
+
+    log_id = str(payload.get("logId", "")).strip() or f"{date_created}-{slugify(series_name or 'experiment')}-{series_number or 'log'}"
+    folder = VAULT_ROOT / settings["folders"].get("experiment logs", "Experiment Logs")
+    file_path = folder / f"{sanitize_file_name(log_id)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: experiment-log
+tags:
+  - "#experiment-log"
+experiment:
+  log_id: {yaml_string(log_id)}
+  series_name: {yaml_string(series_name, 'Add experiment series name')}
+  series_number: {yaml_string(series_number, 'Add experiment number in series')}
+  date_time: {yaml_string(str(date_time))}
+  operators:
+{yaml_list(operators, indent=4, fallback='Add operator')}
+  status: {yaml_string(str(payload.get('status', 'draft')), 'draft')}
+  instrument_configuration: {yaml_string(str(payload.get('instrumentConfiguration', '')))}
+  instrument_condition: {yaml_string(str(payload.get('instrumentCondition', '')))}
+specimen:
+  type: {yaml_string(str(payload.get('specimenType', '')))}
+  id: {yaml_string(str(payload.get('specimenId', '')))}
+run:
+  ion_column_used: {yaml_string(str(payload.get('ionColumnUsed', '')))}
+  load_lock_vented: {yaml_string(str(payload.get('loadLockVented', '')))}
+gas:
+  introduced:
+{yaml_list(gases, indent=4, fallback='none')}
+data:
+  types_recorded:
+{yaml_list(data_types, indent=4, fallback='oscilloscope traces')}
+  alignment_settings_file_link: {yaml_string(str(payload.get('alignmentSettingsFileLink', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Experiment Log
+
+        | Field | Value |
+        | --- | --- |
+        | Experiment Series Name | {series_name} |
+        | Experiment Number in Series | {series_number} |
+        | Date / Time / Operator(s) | {date_time} / {", ".join(operators)} |
+        | Instrument Configuration | {str(payload.get("instrumentConfiguration", "")).strip()} |
+
+        ## Instrument Condition
+
+        | Instrument Parameter | Condition | Units / Notes |
+        | --- | --- | --- |
+        | Main Chamber Starting Pressure | {str(payload.get("mainChamberStartingPressure", "")).strip()} | #.#E-# mbar ({settings.get("main_chamber_gauge", "Ion Gauge")}) |
+        | Main Chamber Ending Pressure | {str(payload.get("mainChamberEndingPressure", "")).strip()} | #.#E-# mbar ({settings.get("main_chamber_gauge", "Ion Gauge")}) |
+        | Main Ion Pump Current | {str(payload.get("mainIonPumpCurrent", "")).strip()} | #.# A |
+        | Main Ion Pump Pressure | {str(payload.get("mainIonPumpPressure", "")).strip()} | #.#E-# mbar |
+        | Puck Nest Temperature | {str(payload.get("puckNestTemperature", "")).strip()} | # K |
+        | Cryo Setpoint | {str(payload.get("cryoSetpoint", "")).strip()} | # K |
+        | Load Lock Starting Pressure | {str(payload.get("loadLockStartingPressure", "")).strip()} | #.#E-# mbar ({settings.get("load_lock_gauge", "LL Wide Range Gauge")}) |
+        | Load Lock Ending Pressure | {str(payload.get("loadLockEndingPressure", "")).strip()} | #.#E-# mbar ({settings.get("load_lock_gauge", "LL Wide Range Gauge")}) |
+        | Ion Column Starting Pressure | {str(payload.get("ionColumnStartingPressure", "")).strip()} | #.#E-# mbar ({settings.get("ion_column_gauge", "Ion Column Wide Range Gauge")}) |
+        | Ion Column Ending Pressure | {str(payload.get("ionColumnEndingPressure", "")).strip()} | #.#E-# mbar ({settings.get("ion_column_gauge", "Ion Column Wide Range Gauge")}) |
+        | Ion Column Ion Pump Current | {str(payload.get("ionColumnIonPumpCurrent", "")).strip()} | #.# A |
+        | Ion Column Ion Pump Pressure | {str(payload.get("ionColumnIonPumpPressure", "")).strip()} | #.#E-# mbar |
+        | Ion Column Used? | {str(payload.get("ionColumnUsed", "")).strip()} | Yes / No |
+        | Specimen Type | {str(payload.get("specimenType", "")).strip()} | |
+        | Specimen ID | {str(payload.get("specimenId", "")).strip()} | |
+        | Gasses Introduced into Main Chamber | {", ".join(gases)} | He, O, etc. |
+        | Load Lock Vented | {str(payload.get("loadLockVented", "")).strip()} | Yes / No |
+
+        ## Experiment Description
+
+        {str(payload.get("experimentDescription", "")).strip()}
+
+        ## Parameter Ranges
+
+        | Parameter Type | Value | Notes |
+        | --- | --- | --- |
+        | Independent Variable Range | {str(payload.get("independentVariableRange", "")).strip()} | min to max, with step size |
+        | Dependent Variable Measurement Range | {str(payload.get("dependentMeasurementRange", "")).strip()} | min to max detectable; restrictions |
+        | Emergency Stop Parameters | {str(payload.get("emergencyStopParameters", "")).strip()} | besides interlock faults |
+
+        ## Data Types Recorded
+
+        {chr(10).join(f"- {item}" for item in data_types) if data_types else "- Add recorded data types"}
+
+        ## Names of Raw Data Files And Links To Their Location
+
+        | File Name | File Type | Link / Location |
+        | --- | --- | --- |
+        {chr(10).join(raw_rows)}
+
+        ## IonOptika Column Alignment Settings
+
+        {str(payload.get("alignmentSettingsFileLink", "")).strip()}
+
+        ## Data
+
+        Insert or link experimental data below. Refer to the Data Formatting Guide for conventions on graphs, photos, MCP images, and Ion Column images.
+
+        ## Linked MCP Image Logs
+
+        ```dataview
+        TABLE WITHOUT ID
+          file.link as "MCP Image Log",
+          image.sequence_number as "Sequence",
+          image.date_time as "Date / Time",
+          file.mtime as "Modified"
+        FROM #mcp-image-log AND !"assets"
+        WHERE image.parent_experiment_log = this.file.name
+        SORT image.sequence_number ASC
+        ```
+
+        ## Linked Ion Column Image Logs
+
+        ```dataview
+        TABLE WITHOUT ID
+          file.link as "Ion Column Image Log",
+          image.sequence_number as "Sequence",
+          image.date_time as "Date / Time",
+          file.mtime as "Modified"
+        FROM #ion-column-image-log AND !"assets"
+        WHERE image.parent_experiment_log = this.file.name
+        SORT image.sequence_number ASC
+        ```
+
+        ## Experiment Notes
+
+        {str(payload.get("experimentNotes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_mcp_image_log(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    date_time = payload.get("dateTime") or current_timestamp()
+    sequence = str(payload.get("imageSequenceNumber", "")).strip() or "1"
+    parent_log = str(payload.get("parentExperimentLog", "")).strip()
+    file_name = str(payload.get("fileName", "")).strip() or f"{current_date()}-mcp-image-{sequence}"
+    folder = VAULT_ROOT / settings["folders"].get("mcp image logs", "Image Logs/MCP")
+    file_path = folder / f"{sanitize_file_name(file_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: mcp-image-log
+tags:
+  - "#mcp-image-log"
+image:
+  parent_experiment_log: {yaml_string(parent_log, 'Link parent experiment log')}
+  experiment_series_number: {yaml_string(str(payload.get('experimentSeriesNumber', '')))}
+  date_time: {yaml_string(str(date_time))}
+  sequence_number: {yaml_string(sequence)}
+  status: {yaml_string(str(payload.get('status', 'draft')), 'draft')}
+  front_voltage: {yaml_string(str(payload.get('mcpFrontVoltage', '')))}
+  back_voltage: {yaml_string(str(payload.get('mcpBackVoltage', '')))}
+  integration_time: {yaml_string(str(payload.get('integrationTime', '')))}
+  specimen_stage_hv: {yaml_string(str(payload.get('specimenStageHv', '')))}
+  main_chamber_pressure: {yaml_string(str(payload.get('mainChamberPressure', '')))}
+  ion_column_settings: {yaml_string(str(payload.get('ionColumnSettings', '')))}
+  imaging_gas: {yaml_string(str(payload.get('imagingGasUsed', '')))}
+  image_file_name: {yaml_string(str(payload.get('imageFileName', '')))}
+  image_file_link: {yaml_string(str(payload.get('imageFileLink', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # MCP Image Data Log
+
+        | Field | Value |
+        | --- | --- |
+        | Experiment Log | {parent_log} |
+        | Experiment Series / Number | {str(payload.get("experimentSeriesNumber", "")).strip()} |
+        | Date / Time | {date_time} |
+        | Image Sequence Number | {sequence} |
+
+        ## MCP Image Parameters
+
+        | Parameter | Condition | Units / Format |
+        | --- | --- | --- |
+        | MCP Front Voltage | {str(payload.get("mcpFrontVoltage", "")).strip()} | +/- #### V |
+        | MCP Back Voltage | {str(payload.get("mcpBackVoltage", "")).strip()} | +/- #### V |
+        | Integration Time | {str(payload.get("integrationTime", "")).strip()} | ## s |
+        | Specimen Stage HV | {str(payload.get("specimenStageHv", "")).strip()} | #### V |
+        | Main Chamber Pressure (on ion gauge) | {str(payload.get("mainChamberPressure", "")).strip()} | #.#E-# mbar |
+        | Ion Column Settings | {str(payload.get("ionColumnSettings", "")).strip()} | Inactive, or settings summary |
+        | Imaging Gas Used, if any | {str(payload.get("imagingGasUsed", "")).strip()} | Helium, or N/A |
+
+        ## MCP Image
+
+        Attach or embed the MCP image below.
+
+        | Field | Value |
+        | --- | --- |
+        | Image File Name | {str(payload.get("imageFileName", "")).strip()} |
+        | Image File Link / Location | {str(payload.get("imageFileLink", "")).strip()} |
+
+        [Paste or insert MCP image here]
+
+        ## Notes
+
+        {str(payload.get("notes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_ion_column_image_log(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    date_time = payload.get("dateTime") or current_timestamp()
+    sequence = str(payload.get("imageSequenceNumber", "")).strip() or "1"
+    parent_log = str(payload.get("parentExperimentLog", "")).strip()
+    file_name = str(payload.get("fileName", "")).strip() or f"{current_date()}-ion-column-image-{sequence}"
+    folder = VAULT_ROOT / settings["folders"].get("ion column image logs", "Image Logs/Ion Column")
+    file_path = folder / f"{sanitize_file_name(file_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: ion-column-image-log
+tags:
+  - "#ion-column-image-log"
+image:
+  parent_experiment_log: {yaml_string(parent_log, 'Link parent experiment log')}
+  experiment_series_number: {yaml_string(str(payload.get('experimentSeriesNumber', '')))}
+  date_time: {yaml_string(str(date_time))}
+  sequence_number: {yaml_string(sequence)}
+  status: {yaml_string(str(payload.get('status', 'draft')), 'draft')}
+  accelerating_voltage: {yaml_string(str(payload.get('acceleratingVoltage', '')))}
+  source_pressure: {yaml_string(str(payload.get('sourcePressure', '')))}
+  aperture_number: {yaml_string(str(payload.get('apertureNumber', '')))}
+  field_of_view: {yaml_string(str(payload.get('fieldOfView', '')))}
+  pixel_dwell_time: {yaml_string(str(payload.get('pixelDwellTime', '')))}
+  signal_source: {yaml_string(str(payload.get('signalSource', '')))}
+  image_file_name: {yaml_string(str(payload.get('imageFileName', '')))}
+  image_file_link: {yaml_string(str(payload.get('imageFileLink', '')))}
+  signal_only_file_name: {yaml_string(str(payload.get('signalOnlyImageFileName', '')))}
+  signal_only_file_link: {yaml_string(str(payload.get('signalOnlyImageFileLink', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Ion Column Image Data Log
+
+        | Field | Value |
+        | --- | --- |
+        | Experiment Log | {parent_log} |
+        | Experiment Series / Number | {str(payload.get("experimentSeriesNumber", "")).strip()} |
+        | Date / Time | {date_time} |
+        | Image Sequence Number | {sequence} |
+
+        ## Ion Column Image Parameters
+
+        | Parameter | Condition | Units / Format |
+        | --- | --- | --- |
+        | Ion Column Accelerating Voltage | {str(payload.get("acceleratingVoltage", "")).strip()} | # kV or V |
+        | Ion Column Source Pressure | {str(payload.get("sourcePressure", "")).strip()} | #.#E-# mbar |
+        | Aperture Number | {str(payload.get("apertureNumber", "")).strip()} | # or diameter in um |
+        | Field of View | {str(payload.get("fieldOfView", "")).strip()} | ### um |
+        | Pixel Dwell Time | {str(payload.get("pixelDwellTime", "")).strip()} | # ms or s |
+        | Signal Source | {str(payload.get("signalSource", "")).strip()} | SED or current measurement |
+
+        ## Ion Column Image
+
+        | Field | Value |
+        | --- | --- |
+        | Image File Name | {str(payload.get("imageFileName", "")).strip()} |
+        | Image File Link / Location | {str(payload.get("imageFileLink", "")).strip()} |
+
+        [Paste or insert Ion Column image here]
+
+        ## Full-Resolution Signal-Only Image
+
+        | Field | Value |
+        | --- | --- |
+        | Signal-Only Image File Name | {str(payload.get("signalOnlyImageFileName", "")).strip()} |
+        | Signal-Only Image Link / Location | {str(payload.get("signalOnlyImageFileLink", "")).strip()} |
+
+        ## Notes
+
+        {str(payload.get("notes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_instrument_configuration(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    name = str(payload.get("configurationName", "")).strip() or "Instrument Configuration"
+    folder = VAULT_ROOT / settings["folders"].get("instrument configurations", "Instrument Configurations")
+    file_path = folder / f"{sanitize_file_name(name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: instrument-configuration
+tags:
+  - "#instrument-config"
+configuration:
+  name: {yaml_string(name)}
+  type: {yaml_string(str(payload.get('configurationType', 'Hybrid')), 'Hybrid')}
+  status: {yaml_string(str(payload.get('configurationStatus', 'active')), 'active')}
+  instrument_name: {yaml_string(str(payload.get('instrumentName', 'Hybrid FIM/APT Tool')))}
+  alignment_settings_file: {yaml_string(str(payload.get('alignmentSettingsFile', '')))}
+  main_chamber_gauge: {yaml_string(str(payload.get('mainChamberGauge', settings.get('main_chamber_gauge', 'Ion Gauge'))))}
+  load_lock_gauge: {yaml_string(str(payload.get('loadLockGauge', settings.get('load_lock_gauge', 'LL Wide Range Gauge'))))}
+  ion_column_gauge: {yaml_string(str(payload.get('ionColumnGauge', settings.get('ion_column_gauge', 'Ion Column Wide Range Gauge'))))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Configuration Summary
+
+        | Field | Value | Notes |
+        | --- | --- | --- |
+        | Configuration | {name} | |
+        | Type | {str(payload.get("configurationType", "Hybrid")).strip()} | |
+        | Status | {str(payload.get("configurationStatus", "active")).strip()} | |
+        | Instrument | {str(payload.get("instrumentName", "Hybrid FIM/APT Tool")).strip()} | |
+        | Alignment settings archive | {str(payload.get("alignmentSettingsFile", "")).strip()} | |
+
+        ## Gauge Mapping
+
+        | Location | Gauge / Readback | Notes |
+        | --- | --- | --- |
+        | Main chamber | {str(payload.get("mainChamberGauge", settings.get("main_chamber_gauge", "Ion Gauge"))).strip()} | |
+        | Load lock | {str(payload.get("loadLockGauge", settings.get("load_lock_gauge", "LL Wide Range Gauge"))).strip()} | |
+        | Ion column | {str(payload.get("ionColumnGauge", settings.get("ion_column_gauge", "Ion Column Wide Range Gauge"))).strip()} | |
+        | Main pump | {str(payload.get("mainIonPumpLabel", "Main Ion Pump")).strip()} | |
+        | Ion column pump | {str(payload.get("ionColumnIonPumpLabel", "Ion Column Ion Pump")).strip()} | |
+
+        ## Interlocks And Safeties
+
+        | Item | Configured State | Notes |
+        | --- | --- | --- |
+        | Vacuum interlocks active | {str(payload.get("vacuumInterlocksActive", "")).strip()} | |
+        | High-voltage interlocks active | {str(payload.get("highVoltageInterlocksActive", "")).strip()} | |
+        | MCP protection active | {str(payload.get("mcpProtectionActive", "")).strip()} | |
+        | Ion column protection active | {str(payload.get("ionColumnProtectionActive", "")).strip()} | |
+        | Safeties intentionally bypassed | {str(payload.get("safetiesBypassed", "")).strip()} | |
+        | Required stop conditions beyond interlocks | {str(payload.get("requiredStopConditions", "")).strip()} | |
+
+        ## Startup Targets
+
+        | Parameter | Target | Units / Notes |
+        | --- | --- | --- |
+        | Main chamber target pressure | {str(payload.get("mainChamberTargetPressure", "")).strip()} | mbar |
+        | Load lock target pressure | {str(payload.get("loadLockTargetPressure", "")).strip()} | mbar |
+        | Ion column target pressure | {str(payload.get("ionColumnTargetPressure", "")).strip()} | mbar |
+        | Main ion pump target current | {str(payload.get("mainIonPumpTargetCurrent", "")).strip()} | A |
+        | Ion column ion pump target current | {str(payload.get("ionColumnIonPumpTargetCurrent", "")).strip()} | A |
+        | Puck nest target temperature | {str(payload.get("puckNestTargetTemperature", "")).strip()} | K |
+        | Cryo target | {str(payload.get("cryoTarget", "")).strip()} | K |
+
+        ## Imaging Defaults
+
+        | Parameter | Default | Units / Notes |
+        | --- | --- | --- |
+        | MCP front voltage | {str(payload.get("mcpFrontVoltageDefault", "")).strip()} | V |
+        | MCP back voltage | {str(payload.get("mcpBackVoltageDefault", "")).strip()} | V |
+        | Specimen stage HV | {str(payload.get("specimenStageHvDefault", "")).strip()} | V |
+        | Ion column accelerating voltage | {str(payload.get("ionColumnAcceleratingVoltageDefault", "")).strip()} | V |
+        | Ion column source pressure | {str(payload.get("ionColumnSourcePressureDefault", "")).strip()} | mbar |
+        | Preferred image export format | {str(payload.get("preferredImageExportFormat", "")).strip()} | |
+        | Preferred signal source | {str(payload.get("preferredSignalSource", "")).strip()} | |
+
+        ## Operating Notes
+
+        {str(payload.get("operatingNotes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_specimen(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    specimen_id = str(payload.get("specimenId", "")).strip() or "specimen"
+    note_name = str(payload.get("specimenName", "")).strip() or specimen_id
+    folder = VAULT_ROOT / settings["folders"].get("specimens", "Specimens")
+    file_path = folder / f"{sanitize_file_name(note_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - wide-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: specimen
+tags:
+  - "#specimen"
+specimen:
+  name: {yaml_string(note_name)}
+  id: {yaml_string(specimen_id)}
+  type: {yaml_string(str(payload.get('specimenType', 'APT needle')), 'APT needle')}
+  material: {yaml_string(str(payload.get('material', '')))}
+  preparation_state: {yaml_string(str(payload.get('preparationState', '')))}
+  storage_location: {yaml_string(str(payload.get('storageLocation', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Specimen Summary
+
+        | Field | Value |
+        | --- | --- |
+        | Specimen ID | {specimen_id} |
+        | Type | {str(payload.get("specimenType", "")).strip()} |
+        | Material | {str(payload.get("material", "")).strip()} |
+        | Preparation state | {str(payload.get("preparationState", "")).strip()} |
+        | Storage location | {str(payload.get("storageLocation", "")).strip()} |
+
+        ## Preparation Notes
+
+        {str(payload.get("preparationNotes", "")).strip()}
+
+        ## Handling Notes
+
+        {str(payload.get("handlingNotes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_startup_checklist(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    checklist_name = str(payload.get("checklistName", "")).strip() or "APT FIM Startup Checklist"
+    folder = VAULT_ROOT / settings["folders"].get("startup checklists", "Checklists/Startup")
+    file_path = folder / f"{sanitize_file_name(checklist_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: startup-checklist
+tags:
+  - "#startup-checklist"
+checklist:
+  name: {yaml_string(checklist_name)}
+  phase: "startup"
+  configuration_name: {yaml_string(str(payload.get('configurationName', '')), 'Add configuration link')}
+  status: {yaml_string(str(payload.get('status', 'active')), 'active')}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Startup Checklist
+
+        - [ ] Confirm the correct instrument configuration and alignment archive are selected.
+        - [ ] Verify all interlocks are in their expected state before pumpdown or HV enable.
+        - [ ] Record main chamber starting pressure from the ion gauge.
+        - [ ] Record load lock starting pressure from the LL wide range gauge.
+        - [ ] Record ion column starting pressure from the ion column wide range gauge.
+        - [ ] Record main ion pump current and inferred pressure.
+        - [ ] Record ion column ion pump current and inferred pressure if the column is active.
+        - [ ] Confirm puck nest temperature and cryo setpoint.
+        - [ ] Confirm gas lines and leak valves are in the expected pre-run state.
+        - [ ] Document any safeties bypassed for this startup.
+
+        ## Startup Monitoring Table
+
+        | Parameter | Condition | Notes |
+        | --- | --- | --- |
+        | Main chamber starting pressure | | |
+        | Main ion pump current and pressure | | |
+        | Puck nest temperature | | |
+        | Cryo setpoint | | |
+        | Load lock starting pressure | | |
+        | Ion column starting pressure | | |
+        | Ion column ion pump current and pressure | | |
+        | Gases introduced into main chamber | | |
+
+        ## Startup Notes
+
+        {str(payload.get("notes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_shutdown_checklist(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    checklist_name = str(payload.get("checklistName", "")).strip() or "APT FIM Shutdown Checklist"
+    folder = VAULT_ROOT / settings["folders"].get("shutdown checklists", "Checklists/Shutdown")
+    file_path = folder / f"{sanitize_file_name(checklist_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: shutdown-checklist
+tags:
+  - "#shutdown-checklist"
+checklist:
+  name: {yaml_string(checklist_name)}
+  phase: "shutdown"
+  configuration_name: {yaml_string(str(payload.get('configurationName', '')), 'Add configuration link')}
+  status: {yaml_string(str(payload.get('status', 'active')), 'active')}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        # Shutdown Checklist
+
+        - [ ] Confirm data files have finished writing before shutdown.
+        - [ ] Record main chamber ending pressure from the ion gauge.
+        - [ ] Record load lock ending pressure from the LL wide range gauge.
+        - [ ] Record ion column ending pressure from the ion column wide range gauge.
+        - [ ] Record main ion pump current and inferred pressure.
+        - [ ] Record ion column ion pump current and inferred pressure if the column was used.
+        - [ ] Confirm gas introduction is isolated or shut off as required.
+        - [ ] Confirm HV, MCP, and ion column states are returned to their shutdown condition.
+        - [ ] Archive alignment settings and operator notes for the run.
+        - [ ] Document any abnormal shutdown behavior or follow-up actions.
+
+        ## Shutdown Monitoring Table
+
+        | Parameter | Condition | Notes |
+        | --- | --- | --- |
+        | Main chamber ending pressure | | |
+        | Main ion pump current and pressure | | |
+        | Load lock ending pressure | | |
+        | Ion column ending pressure | | |
+        | Ion column ion pump current and pressure | | |
+        | Gas state | | |
+        | HV / MCP safe state confirmed | | |
+
+        ## Shutdown Notes
+
+        {str(payload.get("notes", "")).strip()}
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+BUILDERS = {
+    "experiment-series": build_experiment_series,
+    "experiment-log": build_experiment_log,
+    "mcp-image-log": build_mcp_image_log,
+    "ion-column-image-log": build_ion_column_image_log,
+    "instrument-configuration": build_instrument_configuration,
+    "specimen": build_specimen,
+    "startup-checklist": build_startup_checklist,
+    "shutdown-checklist": build_shutdown_checklist,
+}
+
+
+def get_options() -> dict[str, object]:
+    settings = parse_settings()
+    return {
+        "seriesNames": note_choices("experiment series"),
+        "specimenNames": note_choices("specimens"),
+        "instrumentConfigurations": note_choices("instrument configurations"),
+        "experimentLogs": note_choices("experiment logs"),
+        "experimentSeriesTypes": settings["experiment_series_types"],
+        "experimentSeriesStatuses": settings["experiment_series_statuses"],
+        "gases": settings["gases"],
+        "experimentLogStatuses": settings["experiment_log_statuses"],
+        "experimentLogDataTypes": settings["experiment_log_data_types"],
+        "mcpStatuses": settings["mcp_statuses"],
+        "mcpFormats": settings["mcp_formats"],
+        "ionStatuses": settings["ion_statuses"],
+        "ionSignalSources": settings["ion_signal_sources"],
+        "ionFormats": settings["ion_formats"],
+        "instrumentConfigTypes": settings["instrument_config_types"],
+        "specimenTypes": settings["specimen_types"],
+        "gauges": {
+            "mainChamber": settings["main_chamber_gauge"],
+            "loadLock": settings["load_lock_gauge"],
+            "ionColumn": settings["ion_column_gauge"],
+        },
+    }
+
+
+class LabLogRequestHandler(BaseHTTPRequestHandler):
+    def _send(self, status: int, content: bytes, content_type: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)
+
+    def do_GET(self) -> None:
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/" or path == "/index.html":
+            self._send(HTTPStatus.OK, read_file(ROOT / "index.html").encode("utf-8"), "text/html; charset=utf-8")
+            return
+        if path == "/app.js":
+            self._send(HTTPStatus.OK, read_file(ROOT / "app.js").encode("utf-8"), "application/javascript; charset=utf-8")
+            return
+        if path == "/styles.css":
+            self._send(HTTPStatus.OK, read_file(ROOT / "styles.css").encode("utf-8"), "text/css; charset=utf-8")
+            return
+        if path == "/api/options":
+            payload = json.dumps(get_options()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
+        if path == "/api/health":
+            self._send(HTTPStatus.OK, b'{"status":"ok"}', "application/json; charset=utf-8")
+            return
+
+        self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path != "/api/create":
+            self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
+            return
+
+        content_length = int(self.headers.get("Content-Length", "0"))
+        raw = self.rfile.read(content_length)
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except json.JSONDecodeError:
+            self._send(HTTPStatus.BAD_REQUEST, b'{"error":"Invalid JSON"}', "application/json; charset=utf-8")
+            return
+
+        form_type = str(payload.get("formType", "")).strip()
+        builder = BUILDERS.get(form_type)
+        if builder is None:
+            self._send(HTTPStatus.BAD_REQUEST, b'{"error":"Unknown form type"}', "application/json; charset=utf-8")
+            return
+
+        settings = parse_settings()
+        try:
+            path, content = builder(payload, settings)
+            if path.exists():
+                response = {"error": f"File already exists: {path.name}"}
+                self._send(HTTPStatus.CONFLICT, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+                return
+            write_file(path, content)
+        except Exception as exc:  # pragma: no cover - best effort local tool
+            response = {"error": str(exc)}
+            self._send(HTTPStatus.INTERNAL_SERVER_ERROR, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            return
+
+        response = {
+            "path": str(path.relative_to(VAULT_ROOT)),
+            "absolutePath": str(path),
+            "fileName": path.name,
+        }
+        self._send(HTTPStatus.CREATED, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+
+
+def main() -> None:
+    server = ThreadingHTTPServer((HOST, PORT), LabLogRequestHandler)
+    url = f"http://{HOST}:{PORT}/"
+    print(f"Lab log writer serving at {url}")
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

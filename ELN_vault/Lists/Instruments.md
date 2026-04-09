@@ -22,7 +22,7 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 The active notebook structure now uses [[Instrument Configurations]] instead of generic instrument pages.
 
 - Use [[Instrument Configurations]] for gauge mapping, interlocks, alignment archives, and imaging defaults.
-- Link each [[Experiment Runs|experiment run]] to the configuration that was active.
+- Link each [[Experiment Logs|experiment log]] to the configuration that was active.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

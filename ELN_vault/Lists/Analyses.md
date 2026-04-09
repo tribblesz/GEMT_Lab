@@ -19,10 +19,10 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 ## Redirect
 
-The active notebook structure now uses [[Experiment Runs]] and [[Data Records]] instead of generic analysis pages.
+The active notebook structure now uses [[Experiment Logs]], [[MCP Image Logs]], and [[Ion Column Image Logs]] instead of generic analysis pages.
 
-- Use [[Experiment Runs]] for the actual operating record of a startup, test, or shutdown.
-- Use [[Data Records]] for raw file inventories, image metadata, and formatting checks.
+- Use [[Experiment Logs]] for the actual operating record of a startup, test, or shutdown.
+- Use [[MCP Image Logs]] and [[Ion Column Image Logs]] for image-specific metadata and file tracking.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

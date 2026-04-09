@@ -22,7 +22,7 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 The active notebook structure now uses [[Specimens]] instead of chemistry-style sample pages.
 
 - Use [[Specimens]] for specimen IDs, preparation state, and handling notes.
-- Use [[Experiment Runs]] to capture startup, test, and shutdown activity for each specimen.
+- Use [[Experiment Logs]] to capture startup, test, and shutdown activity for each specimen.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

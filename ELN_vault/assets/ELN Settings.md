@@ -17,7 +17,10 @@ folder:
   local data: /path/to_your/local_data/folder
   remote data: /path/to_your/remote_data/folder
   experiment series: Experiment Series
+  experiment logs: Experiment Logs
   experiment runs: Experiment Runs
+  mcp image logs: Image Logs/MCP
+  ion column image logs: Image Logs/Ion Column
   specimens: Specimens
   instrument configurations: Instrument Configurations
   startup checklists: Checklists/Startup
@@ -65,6 +68,39 @@ instrument configuration:
     - Hybrid
     - Vacuum only
     - Imaging only
+experiment log:
+  status:
+    - draft
+    - in progress
+    - completed
+    - aborted
+    - needs review
+  data types:
+    - oscilloscope traces
+    - digital logging
+    - MCP images
+    - raw MCP hit files
+    - ion column images
+    - alignment settings
+mcp image log:
+  status:
+    - draft
+    - reviewed
+  image format:
+    - tiff
+    - png
+    - jpg
+ion column image log:
+  status:
+    - draft
+    - reviewed
+  signal source:
+    - SED
+    - current measurement
+  image format:
+    - tiff
+    - png
+    - jpg
 experiment run:
   mode:
     - APT

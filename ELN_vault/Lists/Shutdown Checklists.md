@@ -17,13 +17,8 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Shutdown Checklist
-type note(tmp-shutdown-checklist-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Shutdown Checklist.md
-templater true
-class accent-button
-```
+> [!info] GUI writer entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Shutdown Checklist Writer](http://127.0.0.1:8765/?form=shutdown-checklist).
 
 ```dataview
 TABLE WITHOUT ID

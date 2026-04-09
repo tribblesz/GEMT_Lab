@@ -22,7 +22,7 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 The active notebook structure now uses [[Experiment Series]] instead of project pages.
 
 - Use [[Experiment Series]] for integration campaigns and planned variable sweeps.
-- Use [[Experiment Runs]] for actual startup, test, and shutdown records.
+- Use [[Experiment Logs]] for actual startup, test, and shutdown records.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

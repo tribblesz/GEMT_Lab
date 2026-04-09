@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lab Log Writer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <div>
+        <h1>Lab Log Writer</h1>
+        <p>Structured log entry for the Obsidian APT/FIM vault.</p>
+      </div>
+      <div class="status-block">
+        <div id="server-status" class="status-chip">Connecting...</div>
+        <div class="status-note">Writes markdown notes directly into <code>ELN_vault</code>.</div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <nav class="sidebar">
+        <button class="nav-button" data-form="experiment-series">Experiment Series</button>
+        <button class="nav-button active" data-form="experiment-log">Experiment Log</button>
+        <button class="nav-button" data-form="mcp-image-log">MCP Image Log</button>
+        <button class="nav-button" data-form="ion-column-image-log">Ion Column Image Log</button>
+        <button class="nav-button" data-form="instrument-configuration">Instrument Configuration</button>
+        <button class="nav-button" data-form="specimen">Specimen</button>
+        <button class="nav-button" data-form="startup-checklist">Startup Checklist</button>
+        <button class="nav-button" data-form="shutdown-checklist">Shutdown Checklist</button>
+      </nav>
+
+      <section class="content">
+        <div class="toolbar">
+          <div>
+            <h2 id="form-title">Experiment Log</h2>
+            <p id="form-description">Create a new experiment log note matching the experiment reporting form.</p>
+          </div>
+          <button id="refresh-options" type="button" class="secondary-button">Refresh lookups</button>
+        </div>
+
+        <div id="message" class="message hidden"></div>
+
+        <form id="entry-form">
+          <div id="form-sections"></div>
+          <div class="form-actions">
+            <button type="submit" class="primary-button">Create Note</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <template id="repeatable-row-template">
+      <tr>
+        <td><input type="text" data-key="col1" /></td>
+        <td><input type="text" data-key="col2" /></td>
+        <td><input type="text" data-key="col3" /></td>
+        <td><button type="button" class="danger-button remove-row">Remove</button></td>
+      </tr>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -22,10 +22,26 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Experiment Runs]]
+- ### [[Experiment Logs]]
   ```dataview
   LIST
-  FROM #experiment-run AND !"assets"
+  FROM #experiment-log AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
+- ### [[MCP Image Logs]]
+  ```dataview
+  LIST
+  FROM #mcp-image-log AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
+- ### [[Ion Column Image Logs]]
+  ```dataview
+  LIST
+  FROM #ion-column-image-log AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```

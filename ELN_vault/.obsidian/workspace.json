@@ -6,7 +6,6 @@
       {
         "id": "c54e130139c2ea09",
         "type": "tabs",
-        "dimension": 48.163841807909606,
         "children": [
           {
             "id": "88ecd175a9696e95",
@@ -56,12 +55,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lists/Instrument Configurations.md",
+                "file": "Lists/Experiment Series.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Instrument Configurations"
+              "title": "Experiment Series"
+            }
+          },
+          {
+            "id": "1b50d528715924e0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Lists/Ion Column Image Logs.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Ion Column Image Logs"
             }
           },
           {
@@ -77,44 +90,37 @@
               "icon": "lucide-file",
               "title": "Instrument Configurations"
             }
-          }
-        ],
-        "currentTab": 3
-      },
-      {
-        "id": "6d467780f01d343f",
-        "type": "tabs",
-        "dimension": 51.836158192090394,
-        "children": [
+          },
           {
-            "id": "26362c947c84defb",
+            "id": "a9fc2938440a7a42",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lists/Specimens.md",
+                "file": "Lists/Experiment Logs.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Specimens"
+              "title": "Experiment Logs"
             }
           },
           {
-            "id": "98a2a4b50b0e612c",
+            "id": "36b0b68de240a3ac",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "assets/ELN Settings.md",
+                "file": "Lists/Processes.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "ELN Settings"
+              "title": "Processes"
             }
           }
-        ]
+        ],
+        "currentTab": 7
       }
     ],
     "direction": "vertical"
@@ -191,7 +197,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 324.5024719238281
+    "width": 357.5
   },
   "right": {
     "id": "6d4b2d9d326b3aaa",
@@ -279,10 +285,10 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Lists/Specimens.md"
+                "file": "Lists/Processes.md"
               },
               "icon": "lucide-info",
-              "title": "File properties for Specimens"
+              "title": "File properties for Processes"
             }
           }
         ],
@@ -308,47 +314,47 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "26362c947c84defb",
+  "active": "36b0b68de240a3ac",
   "lastOpenFiles": [
-    "Quick Start Guide.md",
-    "Lists/Instrument Configurations.md",
-    "Home.md",
-    "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/02-using-callout.md",
-    "Lists/Experiment Series.md",
+    "Lists/Projects.md",
+    "Lists/Processes.md",
+    "Lists/Meetings.md",
     "Lists/Lists.md",
+    "Lists/Analyses.md",
+    "Lists/Notes.md",
+    "Lists/Contacts.md",
+    "assets/literature templates/Import Publication.md",
+    "Lists/Daily Notes.md",
+    "Contacts/Primary Contact.md",
+    "Experiment Logs/345435.md",
+    "Lists/Experiment Logs.md",
+    "Home.md",
+    "Experiment Logs/2026-04-09-sdfsdf-log.md",
+    "Experiment Logs/2026-04-09-sdf-sdf.md",
+    "Experiment Logs",
     "Lists/Experiment Runs.md",
+    "Lists/Experiment Series.md",
+    "Specimens/sdf.md",
+    "Specimens/1.md",
+    "Lists/Ion Column Image Logs.md",
+    "Specimens/specimen.md",
+    "Specimens/tester.md",
+    "Specimens",
+    "Lists/Instruments.md",
+    "Lists/Instrument Configurations.md",
+    "Lists/Startup Checklists.md",
+    "Lists/Specimens.md",
     "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-SmartSEM-software-manual.pdf",
     "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-MERLIN_Brochure.pdf",
     "Resources/Instruments/ZEISS - Merlin/Documents/ZEISS_MERLIN_FE-SEM.jpg",
-    "Lists/Startup Checklists.md",
-    "assets/ELN Settings.md",
     "Notes/HowTos/Getting started with Obsidian/images/Pasted image 20250313150143.png",
     "Writing/Reports/Report BMBF/images/image_placeholder_r.png",
-    "Lists/Notes.md",
-    "Notes/HowTos/Getting started with Obsidian/File Export.md",
-    "ELN Dashboard.md",
-    "Lists/Meetings.md",
-    "Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md",
-    "Lists/Labs.md",
-    "Lists/Chemicals.md",
-    "Lists/Analyses.md",
-    "Contacts/Primary Contact.md",
-    "Daily Notes/2025/03 März/2025-03-13 - Donnerstag, 13. März.md",
-    "Experiments/Processes/cell assembly/Dummy Process.md",
-    "Notes/HowTos/Visual Studio Code/Install Visual Studio Code.md",
-    "Lists/ELN Note Versions.md",
-    "Notes/HowTos/Obsidian ELN/Obsidian ELN Python App.md",
-    "assets/templates/DataView Queries/DV Sample SEM Analysis.md",
-    "assets/templates/DataView Queries/DV Sample Raman Analysis.md",
-    "assets/templates/DataView Queries/DV Sample GCPL Analysis.md",
     "Notes/HowTos/Getting started with Obsidian/images",
     "Daily Notes/2025/03 März",
     "Daily Notes/2025",
     "assets/javascript/dataview/views/test.js",
     "assets/javascript/dataview/views/sample.js",
     "assets/javascript/dataview/views/properties.js",
-    "assets/javascript/dataview/views/process.js",
-    "assets/javascript/dataview/views/note_header.js",
     "assets/images/Motivation/make_the_days_count.png",
     "assets/images/Motivation/wind_it_up.png",
     "assets/images/Motivation/pave_a_new_road.png",

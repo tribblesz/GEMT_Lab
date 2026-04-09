@@ -17,7 +17,9 @@ This page now mirrors the active APT/FIM workflow. For the main landing page, us
 # Active Work
 
 - [[Experiment Series]]
-- [[Experiment Runs]]
+- [[Experiment Logs]]
+- [[MCP Image Logs]]
+- [[Ion Column Image Logs]]
 - [[Specimens]]
 - [[Instrument Configurations]]
 - [[Startup Checklists]]
@@ -25,20 +27,37 @@ This page now mirrors the active APT/FIM workflow. For the main landing page, us
 - [[Data Records]]
 - [[Lists]]
 
-## Recent Experiment Runs
+## Writer
+
+Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open:
+
+- [Experiment Log Writer](http://127.0.0.1:8765/?form=experiment-log)
+- [MCP Image Log Writer](http://127.0.0.1:8765/?form=mcp-image-log)
+- [Ion Column Image Log Writer](http://127.0.0.1:8765/?form=ion-column-image-log)
+
+## Recent Experiment Logs
 
 ```dataview
 LIST
-FROM #experiment-run AND !"assets"
+FROM #experiment-log AND !"assets"
 SORT file.mtime.ts DESC
 LIMIT 8
 ```
 
-## Recent Data Records
+## Recent MCP Image Logs
 
 ```dataview
 LIST
-FROM #data-record AND !"assets"
+FROM #mcp-image-log AND !"assets"
+SORT file.mtime.ts DESC
+LIMIT 8
+```
+
+## Recent Ion Column Image Logs
+
+```dataview
+LIST
+FROM #ion-column-image-log AND !"assets"
 SORT file.mtime.ts DESC
 LIMIT 8
 ```

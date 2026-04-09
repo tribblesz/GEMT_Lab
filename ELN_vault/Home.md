@@ -23,10 +23,10 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Experiment Runs]]
+- ### [[Experiment Logs]]
   ```dataview
   LIST
-  FROM #experiment-run AND !"assets"
+  FROM #experiment-log AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```
@@ -47,7 +47,7 @@ tags:
   LIMIT 6
   ```
 
-# Checklists And Data
+# Checklists And Imaging Data
 
 - ### [[Startup Checklists]]
   ```dataview
@@ -69,6 +69,22 @@ tags:
   ```dataview
   LIST
   FROM #data-record AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
+- ### [[MCP Image Logs]]
+  ```dataview
+  LIST
+  FROM #mcp-image-log AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
+- ### [[Ion Column Image Logs]]
+  ```dataview
+  LIST
+  FROM #ion-column-image-log AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```
@@ -112,8 +128,11 @@ LIMIT 20
 # Quick Links
 
 - [[Lists]]
+- [[Lab Log Writer]]
 - [[Experiment Series]]
-- [[Experiment Runs]]
+- [[Experiment Logs]]
+- [[MCP Image Logs]]
+- [[Ion Column Image Logs]]
 - [[Specimens]]
 - [[Instrument Configurations]]
 - [[Startup Checklists]]
@@ -124,7 +143,9 @@ LIMIT 20
 
 - File Count: **`$=dv.pages().length`**
 - Experiment Series: **`$=dv.pages('#experiment-series AND !"assets"').length`**
-- Experiment Runs: **`$=dv.pages('#experiment-run AND !"assets"').length`**
+- Experiment Logs: **`$=dv.pages('#experiment-log AND !"assets"').length`**
+- MCP Image Logs: **`$=dv.pages('#mcp-image-log AND !"assets"').length`**
+- Ion Column Image Logs: **`$=dv.pages('#ion-column-image-log AND !"assets"').length`**
 - Specimens: **`$=dv.pages('#specimen AND !"assets"').length`**
 - Data Records: **`$=dv.pages('#data-record AND !"assets"').length`**
 

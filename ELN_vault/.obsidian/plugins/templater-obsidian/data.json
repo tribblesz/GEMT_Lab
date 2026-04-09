@@ -27,34 +27,6 @@
       "template": "assets/templates/New Meeting.md"
     },
     {
-      "folder": "Experiment Series",
-      "template": "assets/templates/New Experiment Series.md"
-    },
-    {
-      "folder": "Experiment Runs",
-      "template": "assets/templates/New Experiment Run.md"
-    },
-    {
-      "folder": "Specimens",
-      "template": "assets/templates/New Specimen.md"
-    },
-    {
-      "folder": "Instrument Configurations",
-      "template": "assets/templates/New Instrument Configuration.md"
-    },
-    {
-      "folder": "Checklists/Startup",
-      "template": "assets/templates/New Startup Checklist.md"
-    },
-    {
-      "folder": "Checklists/Shutdown",
-      "template": "assets/templates/New Shutdown Checklist.md"
-    },
-    {
-      "folder": "Data Records",
-      "template": "assets/templates/New Data Record.md"
-    },
-    {
       "folder": "Tasks",
       "template": "assets/templates/New Task List.md"
     },
@@ -73,15 +45,8 @@
   "syntax_highlighting": true,
   "syntax_highlighting_mobile": false,
   "enabled_templates_hotkeys": [
-    "assets/templates/New Experiment Run.md",
-    "assets/templates/New Experiment Series.md",
     "assets/templates/New Contact.md",
-    "assets/templates/New Data Record.md",
-    "assets/templates/New Instrument Configuration.md",
-    "assets/templates/New Note.md",
-    "assets/templates/New Shutdown Checklist.md",
-    "assets/templates/New Specimen.md",
-    "assets/templates/New Startup Checklist.md"
+    "assets/templates/New Note.md"
   ],
   "startup_templates": [
     "assets/templates/Startup Template.md"

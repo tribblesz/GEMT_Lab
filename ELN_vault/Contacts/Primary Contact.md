@@ -6,15 +6,15 @@ author: StarDustX
 note type: contact
 tag: contact
 name:
-  title:
-  given name: Primary
-  family name: Contact
+  Garry: Primary
+  Nolan: Contact
 contact:
   work:
-    email: contact@example.edu
+    email: garrypjnolan@gmail.com
     phone: +00 xxx xxx xxx
     mobile:
     fax: +00 xxx xxx xxx
+    new key: new value
 address:
   work:
     affiliation: Research Facility
@@ -23,7 +23,7 @@ address:
     building: Main Building
     room: Control Room
     city: City
-    zip code: 00000
+    zip code: 0
     country: Country
 job position: Primary Contact
 group: Operations

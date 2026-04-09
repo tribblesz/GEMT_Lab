@@ -17,13 +17,9 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Experiment Run
-type note(tmp-experiment-run-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Experiment Run.md
-templater true
-class accent-button
-```
+> [!warning] Legacy flow
+> `Experiment Runs` is now the legacy Obsidian-native path. New work should use [[Experiment Logs]] and the local GUI writer at [http://127.0.0.1:8765/?form=experiment-log](http://127.0.0.1:8765/?form=experiment-log) after starting `python tools/lab-log-writer/server.py`.
+> Open [[Lab Log Writer]] for the active creation flow.
 
 ```dataview
 TABLE WITHOUT ID

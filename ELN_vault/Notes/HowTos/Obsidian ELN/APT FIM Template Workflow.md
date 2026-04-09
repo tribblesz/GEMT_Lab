@@ -27,8 +27,9 @@ This guide explains how to use the active APT/FIM templates in the vault and how
 2. Create an [[Experiment Series]] for the integration campaign or test program.
 3. Create one or more [[Specimens]] for the hardware or sample under test.
 4. Review the [[Startup Checklists]] and [[Shutdown Checklists]] you want operators to follow.
-5. Create an [[Experiment Runs|experiment run]] for each actual startup, test, and shutdown sequence.
-6. Create a [[Data Records]] note when you need a dedicated inventory of files, images, and formatting checks.
+5. Start the local GUI writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`.
+6. Create an [[Experiment Logs|experiment log]] for each actual startup, test, and shutdown sequence.
+7. Create one [[MCP Image Logs|MCP image log]] per MCP image and one [[Ion Column Image Logs|ion column image log]] per ion-column image when those images are part of the session record.
 
 ## Instrument Configurations
 
@@ -54,7 +55,7 @@ This note should answer:
 - What are the emergency stop conditions?
 - What kinds of data are expected?
 
-Think of the series note as the planning record for a group of related runs.
+Think of the series note as the planning record for a group of related logs.
 
 ## Specimens
 
@@ -68,7 +69,7 @@ This note should hold:
 - storage location
 - handling notes
 
-The specimen note is the long-lived record. The run note is the time-specific operating record.
+The specimen note is the long-lived record. The experiment log is the time-specific operating record.
 
 ## Startup And Shutdown Checklists
 
@@ -89,45 +90,51 @@ Use the checklist templates when you want repeatable operator workflows.
 
 These checklist notes can be reused across many runs.
 
-## Experiment Runs
+## Experiment Logs
 
-Use the `New Experiment Run` template for every real operating session.
+Use the local GUI writer to create one experiment log for every real operating session.
 
-When creating a run, select or enter:
-- experiment series
-- specimen
-- instrument configuration
-- run mode
-- run status
-- whether the ion column was used
-- whether the load lock was vented
-- gases introduced into the main chamber
-
-The run template is the most important operational note. It includes dedicated sections for:
+The experiment log is the primary operational note. It includes dedicated sections for:
 - startup monitoring
-- during-test observations
 - shutdown monitoring
+- operating description and parameter ranges
 - raw data links
-- data formatting requirements
-- MCP image metadata
-- ion column image metadata
+- linked MCP image logs
+- linked ion column image logs
 - experiment notes, delays, deviations, and observations
 
 Use this note to capture what actually happened, not just what was planned.
 
-## Data Records
+## MCP Image Logs
 
-Use the `New Data Record` template when the files and images for a run need a dedicated note.
+Use one MCP image log per MCP image captured during a session.
 
 This note is useful for:
-- raw data folder links
-- archived alignment settings links
-- MCP image metadata
-- ion column image metadata
-- plot formatting checks
-- photo formatting checks
+- MCP front and back voltage
+- integration time
+- specimen stage high voltage
+- main chamber pressure
+- ion column settings state
+- imaging gas
+- image file names and links
 
-You do not need a separate data record for every run, but it is recommended when the run produces multiple file types or images that need tracking.
+Each MCP image log should link back to the parent [[Experiment Logs|experiment log]].
+
+## Ion Column Image Logs
+
+Use one ion-column image log per ion-column image captured during a session.
+
+This note is useful for:
+- accelerating voltage
+- source pressure
+- aperture number
+- field of view
+- pixel dwell time
+- signal source
+- image file names and links
+- signal-only image file names and links
+
+Each ion-column image log should link back to the parent [[Experiment Logs|experiment log]].
 
 ## Practical Example
 
@@ -137,16 +144,18 @@ For a new integration test campaign:
 2. Create `Experiment Series` for the integration milestone being tested.
 3. Create `Specimen` notes for the tips or reference specimens that may be loaded.
 4. Review or update the `Startup Checklist` and `Shutdown Checklist`.
-5. For each operating session, create an `Experiment Run`.
-6. If the run produces meaningful files or images, create a linked `Data Record`.
+5. Start the GUI writer.
+6. For each operating session, create an `Experiment Log`.
+7. If the session produces meaningful MCP or ion-column images, create linked image-log notes for each image.
 
 ## Minimal Rule Of Thumb
 
 - If it describes the machine setup: use `Instrument Configuration`.
 - If it describes a campaign of related tests: use `Experiment Series`.
 - If it describes a physical item under test: use `Specimen`.
-- If it describes what happened during one operating session: use `Experiment Run`.
-- If it describes the file outputs and image metadata: use `Data Record`.
+- If it describes what happened during one operating session: use `Experiment Log`.
+- If it describes one MCP image: use `MCP Image Log`.
+- If it describes one ion-column image: use `Ion Column Image Log`.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

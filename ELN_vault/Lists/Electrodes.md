@@ -22,7 +22,8 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 This page is retained only as historical reference from the original electrochemistry-oriented vault.
 
 - Use [[Specimens]] for the active specimen catalog.
-- Use [[Experiment Runs]] and [[Data Records]] for active APT/FIM experiment logging.
+- Use [[Experiment Logs]] for active APT/FIM session logging.
+- Use [[MCP Image Logs]] and [[Ion Column Image Logs]] for active image logging.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});
