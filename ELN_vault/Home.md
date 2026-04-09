@@ -10,7 +10,7 @@ tags:
   - dashboard
 ---
 
-<div class="title" style="color:rgba(150, 210, 170, 0.4); text-align:center; font-size:1.8rem;">GEMT</div>
+<div class="title" style="color:rgba(150, 210, 170, 0.4); text-align:center; font-size:0.9rem;">GEMT</div>
 
 # Experiment Control
 

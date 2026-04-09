@@ -3843,6 +3843,7 @@ var NativeAudioRecorder = class {
     this.deviceId = deviceId;
   }
   async startRecording() {
+    this.chunks.length = 0;
     if (!this.recorder) {
       try {
         const audioConstraints = this.deviceId && this.deviceId !== "default" ? { deviceId: { exact: this.deviceId } } : true;
@@ -3879,8 +3880,10 @@ var NativeAudioRecorder = class {
   }
   async stopRecording() {
     return new Promise((resolve) => {
+      const mimeType = this.mimeType || getSupportedMimeType() || "audio/webm";
+      this.mimeType = mimeType;
       if (!this.recorder || this.recorder.state === "inactive") {
-        const blob = new Blob(this.chunks, { type: this.mimeType });
+        const blob = new Blob(this.chunks, { type: mimeType });
         this.chunks.length = 0;
         resolve(blob);
       } else {
@@ -3888,7 +3891,7 @@ var NativeAudioRecorder = class {
           "stop",
           () => {
             const blob = new Blob(this.chunks, {
-              type: this.mimeType
+              type: mimeType
             });
             this.chunks.length = 0;
             if (this.recorder) {

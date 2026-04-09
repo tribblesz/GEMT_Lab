@@ -19,8 +19,9 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 ```button
 name New Note
-type command
-action Templater: Insert assets/templates/New Note.md
+type note(tmp-note-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Note.md
+templater true
 class accent-button
 ```
 

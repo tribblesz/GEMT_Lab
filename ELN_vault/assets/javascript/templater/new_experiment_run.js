@@ -187,8 +187,9 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 
 \`\`\`button
 name New Data Record
-type command
-action Templater: Insert assets/templates/New Data Record.md
+type note(tmp-data-record-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Data Record.md
+templater true
 class accent-button
 \`\`\`
 

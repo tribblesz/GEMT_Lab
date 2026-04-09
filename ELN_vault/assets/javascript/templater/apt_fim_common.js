@@ -109,12 +109,23 @@ async function finalizeNote(tp, noteContent, filename, folderPath, returnType) {
 
   const safeFilename = sanitizeFileName(filename);
   const activeFile = app.workspace.getActiveFile();
+  const targetFile = tp?.config?.target_file || null;
 
-  if (returnType === undefined && activeFile) {
+  if (returnType === undefined && targetFile) {
+    returnType = "target";
+  } else if (returnType === undefined && activeFile) {
     const activeContent = await app.vault.read(activeFile);
     returnType = activeContent === "" ? "insert" : "create";
   } else if (returnType === undefined) {
     returnType = "create";
+  }
+
+  if (returnType === "target" && targetFile) {
+    const newFilePath = `${folderPath}/${safeFilename}.md`;
+    if (targetFile.path !== newFilePath) {
+      await app.fileManager.renameFile(targetFile, newFilePath);
+    }
+    return noteContent;
   }
 
   if (returnType === "insert" && activeFile) {
@@ -128,16 +139,20 @@ async function finalizeNote(tp, noteContent, filename, folderPath, returnType) {
   return "";
 }
 
-module.exports = {
-  chooseFromList,
-  chooseYesNo,
-  finalizeNote,
-  getDataviewPageNames,
-  getFolder,
-  getNested,
-  getSettings,
-  getToday,
-  sanitizeFileName,
-  slugify,
-  yamlString,
-};
+function apt_fim_common() {
+  return "";
+}
+
+apt_fim_common.chooseFromList = chooseFromList;
+apt_fim_common.chooseYesNo = chooseYesNo;
+apt_fim_common.finalizeNote = finalizeNote;
+apt_fim_common.getDataviewPageNames = getDataviewPageNames;
+apt_fim_common.getFolder = getFolder;
+apt_fim_common.getNested = getNested;
+apt_fim_common.getSettings = getSettings;
+apt_fim_common.getToday = getToday;
+apt_fim_common.sanitizeFileName = sanitizeFileName;
+apt_fim_common.slugify = slugify;
+apt_fim_common.yamlString = yamlString;
+
+module.exports = apt_fim_common;

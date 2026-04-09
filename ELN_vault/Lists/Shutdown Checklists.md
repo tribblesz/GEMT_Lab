@@ -19,8 +19,9 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 ```button
 name New Shutdown Checklist
-type command
-action Templater: Insert assets/templates/New Shutdown Checklist.md
+type note(tmp-shutdown-checklist-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Shutdown Checklist.md
+templater true
 class accent-button
 ```
 

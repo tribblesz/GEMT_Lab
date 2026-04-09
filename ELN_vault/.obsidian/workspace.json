@@ -6,61 +6,102 @@
       {
         "id": "c54e130139c2ea09",
         "type": "tabs",
+        "dimension": 48.163841807909606,
         "children": [
           {
             "id": "88ecd175a9696e95",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/02-using-callout.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "02-using-callout"
             }
           },
+          {
+            "id": "4ed5cd165acf5c70",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Lists/Startup Checklists.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Startup Checklists"
+            }
+          },
+          {
+            "id": "2d5846453e9e7105",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Lists/Experiment Series.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Experiment Series"
+            }
+          },
+          {
+            "id": "33e071de275d1df2",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Lists/Instrument Configurations.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Instrument Configurations"
+            }
+          },
+          {
+            "id": "6f97a776edb68cf0",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "Lists/Instrument Configurations.md",
+                "mode": "preview",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Instrument Configurations"
+            }
+          }
+        ],
+        "currentTab": 3
+      },
+      {
+        "id": "6d467780f01d343f",
+        "type": "tabs",
+        "dimension": 51.836158192090394,
+        "children": [
           {
             "id": "26362c947c84defb",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lists/Notes.md",
-                "mode": "source",
+                "file": "Lists/Specimens.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Notes"
+              "title": "Specimens"
             }
           },
           {
             "id": "98a2a4b50b0e612c",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Home.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Home"
-            }
-          },
-          {
-            "id": "7661b11b86293700",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Notes/HowTos/Getting started with Obsidian/File Export.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "File Export"
-            }
-          },
-          {
-            "id": "94b36f186e23024c",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -73,8 +114,7 @@
               "title": "ELN Settings"
             }
           }
-        ],
-        "currentTab": 2
+        ]
       }
     ],
     "direction": "vertical"
@@ -239,10 +279,10 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Home.md"
+                "file": "Lists/Specimens.md"
               },
               "icon": "lucide-info",
-              "title": "File properties for Home"
+              "title": "File properties for Specimens"
             }
           }
         ],
@@ -268,35 +308,39 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "98a2a4b50b0e612c",
+  "active": "26362c947c84defb",
   "lastOpenFiles": [
+    "Quick Start Guide.md",
+    "Lists/Instrument Configurations.md",
+    "Home.md",
+    "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/02-using-callout.md",
+    "Lists/Experiment Series.md",
+    "Lists/Lists.md",
+    "Lists/Experiment Runs.md",
+    "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-SmartSEM-software-manual.pdf",
+    "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-MERLIN_Brochure.pdf",
+    "Resources/Instruments/ZEISS - Merlin/Documents/ZEISS_MERLIN_FE-SEM.jpg",
+    "Lists/Startup Checklists.md",
+    "assets/ELN Settings.md",
+    "Notes/HowTos/Getting started with Obsidian/images/Pasted image 20250313150143.png",
+    "Writing/Reports/Report BMBF/images/image_placeholder_r.png",
     "Lists/Notes.md",
+    "Notes/HowTos/Getting started with Obsidian/File Export.md",
+    "ELN Dashboard.md",
     "Lists/Meetings.md",
     "Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md",
     "Lists/Labs.md",
     "Lists/Chemicals.md",
-    "Lists/Startup Checklists.md",
-    "Home.md",
     "Lists/Analyses.md",
     "Contacts/Primary Contact.md",
-    "Notes/HowTos/Getting started with Obsidian/File Export.md",
     "Daily Notes/2025/03 März/2025-03-13 - Donnerstag, 13. März.md",
-    "Quick Start Guide.md",
-    "assets/ELN Settings.md",
     "Experiments/Processes/cell assembly/Dummy Process.md",
     "Notes/HowTos/Visual Studio Code/Install Visual Studio Code.md",
     "Lists/ELN Note Versions.md",
-    "ELN Dashboard.md",
     "Notes/HowTos/Obsidian ELN/Obsidian ELN Python App.md",
     "assets/templates/DataView Queries/DV Sample SEM Analysis.md",
     "assets/templates/DataView Queries/DV Sample Raman Analysis.md",
     "assets/templates/DataView Queries/DV Sample GCPL Analysis.md",
-    "assets/templates/DataView Queries/DV Open Tasks.md",
-    "assets/templates/DataView Queries/DataView Inline Queries.md",
-    "Notes/HowTos/Getting started with Obsidian/Markdown Formatting Guide.md",
-    "Notes/HowTos/Getting started with Obsidian/Obsidian Plugin Documentation/Banners.md",
-    "Notes/HowTos/Getting started with Obsidian/emoji shortcodes.md",
-    "Notes/HowTos/Getting started with Obsidian/images/Pasted image 20250313150143.png",
     "Notes/HowTos/Getting started with Obsidian/images",
     "Daily Notes/2025/03 März",
     "Daily Notes/2025",
@@ -305,8 +349,6 @@
     "assets/javascript/dataview/views/properties.js",
     "assets/javascript/dataview/views/process.js",
     "assets/javascript/dataview/views/note_header.js",
-    "assets/javascript/dataview/views/note_footer.js",
-    "assets/javascript/dataview/views/navbar.js",
     "assets/images/Motivation/make_the_days_count.png",
     "assets/images/Motivation/wind_it_up.png",
     "assets/images/Motivation/pave_a_new_road.png",
@@ -314,8 +356,6 @@
     "assets/images/Motivation/impossible_until_it_is_done.png",
     "assets/images/Motivation/face_towards_sunshine.png",
     "assets/images/Motivation/attitude_is_a_little_thing.png",
-    "assets/images/People/Liuda-Mereacre.jpg",
-    "assets/images/People/Dummy-Contact-Icon.png",
     "Unbenannt.canvas"
   ]
 }

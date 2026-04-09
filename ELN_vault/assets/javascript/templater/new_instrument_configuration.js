@@ -39,6 +39,16 @@ async function new_instrument_configuration(tp, return_type) {
     "Enter configuration status:",
     "active"
   );
+  const mainChamberGauge =
+    common.getNested(settings, "gauge", "main chamber", "name") || "Ion Gauge";
+  const loadLockGauge =
+    common.getNested(settings, "gauge", "load lock", "name") ||
+    "LL Wide Range Gauge";
+  const ionColumnGauge =
+    common.getNested(settings, "gauge", "ion column", "name") ||
+    "Ion Column Wide Range Gauge";
+  const mainIonPumpLabel = "Main Ion Pump";
+  const ionColumnIonPumpLabel = "Ion Column Ion Pump";
 
   const folder = common.getFolder(
     settings,
@@ -64,19 +74,11 @@ configuration:
     alignmentSettingsFile,
     "Add the archived alignment settings path or link."
   )}
-  main_chamber_gauge: ${common.yamlString(
-    common.getNested(settings, "gauge", "main chamber", "name") || "Ion Gauge"
-  )}
-  load_lock_gauge: ${common.yamlString(
-    common.getNested(settings, "gauge", "load lock", "name") ||
-      "LL Wide Range Gauge"
-  )}
-  ion_column_gauge: ${common.yamlString(
-    common.getNested(settings, "gauge", "ion column", "name") ||
-      "Ion Column Wide Range Gauge"
-  )}
-  main_ion_pump_label: ${common.yamlString("Main Ion Pump")}
-  ion_column_ion_pump_label: ${common.yamlString("Ion Column Ion Pump")}
+  main_chamber_gauge: ${common.yamlString(mainChamberGauge)}
+  load_lock_gauge: ${common.yamlString(loadLockGauge)}
+  ion_column_gauge: ${common.yamlString(ionColumnGauge)}
+  main_ion_pump_label: ${common.yamlString(mainIonPumpLabel)}
+  ion_column_ion_pump_label: ${common.yamlString(ionColumnIonPumpLabel)}
 ---
 
 \`\`\`dataviewjs
@@ -85,43 +87,70 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 
 # Configuration Summary
 
-- **Configuration:** ${configurationName}
-- **Type:** ${configurationType || "Add a configuration type."}
-- **Instrument:** ${instrumentName || "Add the instrument name."}
-- **Alignment settings archive:** ${
+| Field | Value | Notes |
+| --- | --- | --- |
+| Configuration | ${configurationName} | |
+| Type | ${configurationType || "Add a configuration type."} | |
+| Status | ${configurationStatus || "active"} | |
+| Instrument | ${instrumentName || "Add the instrument name."} | |
+| Alignment settings archive | ${
     alignmentSettingsFile || "Add the alignment settings file path or link."
-  }
+  } | |
 
 ## Gauge Mapping
 
 | Location | Gauge / Readback | Notes |
 | --- | --- | --- |
-| Main chamber | Ion Gauge | Primary pressure reference during runs |
-| Load lock | LL Wide Range Gauge | Record starting and ending pressure |
-| Ion column | Ion Column Wide Range Gauge | Record starting and ending pressure |
-| Main pump | Main Ion Pump current and pressure | Record current and inferred pressure |
-| Ion column pump | Ion Column Ion Pump current and pressure | Record current and inferred pressure |
+| Main chamber | ${mainChamberGauge} | Primary pressure reference during runs |
+| Load lock | ${loadLockGauge} | Record starting and ending pressure |
+| Ion column | ${ionColumnGauge} | Record starting and ending pressure |
+| Main pump | ${mainIonPumpLabel} current and pressure | Record current and inferred pressure |
+| Ion column pump | ${ionColumnIonPumpLabel} current and pressure | Record current and inferred pressure |
 
 ## Interlocks And Safeties
 
-- Active interlocks:
-- Safeties intentionally bypassed:
-- Required stop conditions beyond interlocks:
+| Item | Configured State | Notes |
+| --- | --- | --- |
+| Vacuum interlocks active | | |
+| High-voltage interlocks active | | |
+| MCP protection active | | |
+| Ion column protection active | | |
+| Safeties intentionally bypassed | none | |
+| Required stop conditions beyond interlocks | | |
 
 ## Startup Targets
 
-- Main chamber target pressure:
-- Load lock target pressure:
-- Ion column target pressure:
-- Cryo target:
+| Parameter | Target | Units / Notes |
+| --- | --- | --- |
+| Main chamber target pressure | | mbar |
+| Load lock target pressure | | mbar |
+| Ion column target pressure | | mbar |
+| Main ion pump target current | | A |
+| Ion column ion pump target current | | A |
+| Puck nest target temperature | | K |
+| Cryo target | | K |
 
 ## Imaging Defaults
 
-- Default MCP front voltage:
-- Default MCP back voltage:
-- Default specimen stage HV:
-- Default ion column accelerating voltage:
-- Preferred image export format:
+| Parameter | Default | Units / Notes |
+| --- | --- | --- |
+| MCP front voltage | | V |
+| MCP back voltage | | V |
+| Specimen stage HV | | V |
+| Ion column accelerating voltage | | V |
+| Ion column source pressure | | mbar |
+| Preferred image export format | | |
+| Preferred signal source | | |
+
+## Operating Notes
+
+| Topic | Entry |
+| --- | --- |
+| Standard operating mode | |
+| Allowed imaging gases | |
+| Warm-up / stabilization steps | |
+| Shutdown prerequisites | |
+| Archive / file naming notes | |
 
 \`\`\`dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

@@ -12,6 +12,7 @@ tags:
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/navbar", {});
 ```
+sdss
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_header", {});
@@ -19,8 +20,9 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 ```button
 name New Startup Checklist
-type command
-action Templater: Insert assets/templates/New Startup Checklist.md
+type note(tmp-startup-checklist-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Startup Checklist.md
+templater true
 class accent-button
 ```
 

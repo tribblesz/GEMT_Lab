@@ -4,6 +4,12 @@ note:
   author:
     - name: StarDustX
       initials: SDX
+    - Mehdi: ~~
+      initials: ~~
+    - Austin: ~~
+      initials: ~~
+    - Angelo: ~~
+      initials: ~~
 operators:
   - name: StarDustX
     initials: SDX

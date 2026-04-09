@@ -12,15 +12,16 @@ tags:
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/navbar", {});
 ```
-
+srert
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
 ```button
 name New Instrument Configuration
-type command
-action Templater: Insert assets/templates/New Instrument Configuration.md
+type note(tmp-instrument-configuration-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Instrument Configuration.md
+templater true
 class accent-button
 ```
 

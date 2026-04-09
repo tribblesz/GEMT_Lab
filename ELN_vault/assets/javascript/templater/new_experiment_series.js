@@ -97,8 +97,9 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 
 \`\`\`button
 name New Experiment Run
-type command
-action Templater: Insert assets/templates/New Experiment Run.md
+type note(tmp-experiment-run-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
+action assets/templates/New Experiment Run.md
+templater true
 class accent-button
 \`\`\`
 
