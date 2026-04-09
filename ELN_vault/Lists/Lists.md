@@ -14,9 +14,19 @@ tags:
 
 ## Folders
 
-- Experiment: [[Lists/Experiment/Experiment Series|Experiment Series]], [[Lists/Experiment/Experiment Logs|Experiment Logs]], [[Lists/Experiment/MCP Image Logs|MCP Image Logs]], [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]], [[Lists/Experiment/Specimens|Specimens]], [[Lists/Experiment/Experiment Runs|Experiment Runs]]
+- Daily: [[Lists/Operations/Daily Notes|Daily Notes]]
+- Experiment: [[Lists/Experiment/Experiment Series|Experiment Series]], [[Lists/Experiment/Experiment Logs|Experiment Logs]], [[Lists/Experiment/MCP Image Logs|MCP Image Logs]], [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]], [[Lists/Experiment/Specimens|Specimens]], [[Lists/Experiment/Experiment Runs|Experiment Runs]], [[Lists/Experiment/Notes|Notes]]
 - Reference: [[Lists/Reference/Contacts|Contacts]], [[Lists/Reference/Publications|Publications]], [[Lists/Reference/ELN Note Versions|ELN Note Versions]]
-- Operations: [[Lists/Operations/Instrument Configurations|Instrument Configurations]], [[Lists/Operations/Startup Checklists|Startup Checklists]], [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]], [[Lists/Operations/Daily Notes|Daily Notes]], [[Lists/Operations/Meetings|Meetings]], [[Lists/Operations/Notes|Notes]]
+- Operations: [[Lists/Operations/Instrument Configurations|Instrument Configurations]], [[Lists/Operations/Startup Checklists|Startup Checklists]], [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]], [[Lists/Operations/Meetings|Meetings]]
+
+# Daily Notes
+- ### [[Lists/Operations/Daily Notes|Daily Notes]]
+  ```dataview
+  LIST
+  FROM #daily-note AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
 
 # Experiment Work
 - ### [[Lists/Experiment/Experiment Series|Experiment Series]]
@@ -59,6 +69,14 @@ tags:
   LIMIT 6
   ```
 
+- ### [[Lists/Experiment/Notes|Notes]]
+  ```dataview
+  LIST
+  FROM "Notes" AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
 - ### [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
   ```dataview
   LIST
@@ -95,22 +113,6 @@ tags:
   ```dataview
   LIST
   FROM #meeting AND !"assets"
-  SORT file.mtime.ts DESC
-  LIMIT 6
-  ```
-
-- ### [[Lists/Operations/Daily Notes|Daily Notes]]
-  ```dataview
-  LIST
-  FROM #daily-note AND !"assets"
-  SORT file.mtime.ts DESC
-  LIMIT 6
-  ```
-
-- ### [[Lists/Operations/Notes|Notes]]
-  ```dataview
-  LIST
-  FROM "Notes" AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```

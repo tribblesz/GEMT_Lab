@@ -21,16 +21,16 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 The local GUI writer is the preferred entry path for:
 
+- [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Lists/Experiment/Experiment Series|Experiment Series]]
 - [[Lists/Experiment/Experiment Logs|Experiment Logs]]
 - [[Lists/Experiment/MCP Image Logs|MCP Image Logs]]
 - [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]]
+- [[Lists/Experiment/Notes|Notes]]
 - [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
 - [[Lists/Experiment/Specimens|Specimens]]
 - [[Lists/Reference/Contacts|Contacts]]
-- [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Lists/Operations/Meetings|Meetings]]
-- [[Lists/Operations/Notes|Notes]]
 - [[Tasks/My Tasks|Task Lists]]
 - [[Lists/Operations/Startup Checklists|Startup Checklists]]
 - [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]

@@ -12,6 +12,16 @@ tags:
 
 <div class="title" style="color:rgba(150, 210, 170, 0.4); text-align:center; font-size:0.9rem;">GEMT</div>
 
+# Daily Notes
+
+- ### [[Lists/Operations/Daily Notes|Daily Notes]]
+  ```dataview
+  LIST
+  FROM #daily-note AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
 # Experiment Control
 
 - ### [[Lists/Experiment/Experiment Series|Experiment Series]]
@@ -35,6 +45,14 @@ tags:
   ```dataview
   LIST
   FROM #specimen AND !"assets"
+  SORT file.mtime.ts DESC
+  LIMIT 6
+  ```
+
+- ### [[Lists/Experiment/Notes|Notes]]
+  ```dataview
+  LIST
+  FROM "Notes" AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```
@@ -89,28 +107,12 @@ tags:
   LIMIT 6
   ```
 
-# Notes And Coordination
-
-- ### [[Lists/Operations/Daily Notes|Daily Notes]]
-  ```dataview
-  LIST
-  FROM #daily-note AND !"assets"
-  SORT file.mtime.ts DESC
-  LIMIT 6
-  ```
+# Coordination
 
 - ### [[Lists/Operations/Meetings|Meetings]]
   ```dataview
   LIST
   FROM #meeting AND !"assets"
-  SORT file.mtime.ts DESC
-  LIMIT 6
-  ```
-
-- ### [[Lists/Operations/Notes|Notes]]
-  ```dataview
-  LIST
-  FROM "Notes" AND !"assets"
   SORT file.mtime.ts DESC
   LIMIT 6
   ```
@@ -129,11 +131,13 @@ LIMIT 20
 
 - [[Lists]]
 - [[Lab Log Writer]]
+- [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Lists/Experiment/Experiment Series|Experiment Series]]
 - [[Lists/Experiment/Experiment Logs|Experiment Logs]]
 - [[Lists/Experiment/MCP Image Logs|MCP Image Logs]]
 - [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]]
 - [[Lists/Experiment/Specimens|Specimens]]
+- [[Lists/Experiment/Notes|Notes]]
 - [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
 - [[Lists/Operations/Startup Checklists|Startup Checklists]]
 - [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]

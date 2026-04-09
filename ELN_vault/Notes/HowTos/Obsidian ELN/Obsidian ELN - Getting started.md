@@ -133,7 +133,7 @@ Additional list views are available for
 - [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Labs]]
 - [[Lists/Operations/Meetings|Meetings]]
-- [[Lists/Operations/Notes|Notes]]
+- [[Lists/Experiment/Notes|Notes]]
 - [[Lists/Reference/Publications|Publications]]
 
 ## Step 8: Change the look of Obsidian and your notes

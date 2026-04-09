@@ -20,29 +20,41 @@
 
     <main class="layout">
       <nav class="sidebar">
-        <div class="nav-group">
-          <div class="nav-group-title">Experiment</div>
-          <button class="nav-button" data-form="experiment-series">Experiment Series</button>
-          <button class="nav-button active" data-form="experiment-log">Experiment Log</button>
-          <button class="nav-button" data-form="mcp-image-log">MCP Image Log</button>
-          <button class="nav-button" data-form="ion-column-image-log">Ion Column Image Log</button>
-          <button class="nav-button" data-form="specimen">Specimen</button>
+        <div class="nav-group" data-group="daily">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">Daily</button>
+          <div class="nav-group-body">
+            <button class="nav-button" data-form="daily-note">Daily Note</button>
+          </div>
         </div>
 
-        <div class="nav-group">
-          <div class="nav-group-title">Reference</div>
-          <button class="nav-button" data-form="contact">Contact</button>
+        <div class="nav-group" data-group="experiment">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">Experiment</button>
+          <div class="nav-group-body">
+            <button class="nav-button" data-form="experiment-series">Experiment Series</button>
+            <button class="nav-button active" data-form="experiment-log">Experiment Log</button>
+            <button class="nav-button" data-form="mcp-image-log">MCP Image Log</button>
+            <button class="nav-button" data-form="ion-column-image-log">Ion Column Image Log</button>
+            <button class="nav-button" data-form="specimen">Specimen</button>
+            <button class="nav-button" data-form="note">Note</button>
+          </div>
         </div>
 
-        <div class="nav-group">
-          <div class="nav-group-title">Operations</div>
-          <button class="nav-button" data-form="instrument-configuration">Instrument Configuration</button>
-          <button class="nav-button" data-form="daily-note">Daily Note</button>
-          <button class="nav-button" data-form="meeting">Meeting</button>
-          <button class="nav-button" data-form="note">Note</button>
-          <button class="nav-button" data-form="task-list">Task List</button>
-          <button class="nav-button" data-form="startup-checklist">Startup Checklist</button>
-          <button class="nav-button" data-form="shutdown-checklist">Shutdown Checklist</button>
+        <div class="nav-group" data-group="reference">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">Reference</button>
+          <div class="nav-group-body">
+            <button class="nav-button" data-form="contact">Contact</button>
+          </div>
+        </div>
+
+        <div class="nav-group" data-group="operations">
+          <button class="nav-group-toggle" type="button" aria-expanded="true">Operations</button>
+          <div class="nav-group-body">
+            <button class="nav-button" data-form="instrument-configuration">Instrument Configuration</button>
+            <button class="nav-button" data-form="meeting">Meeting</button>
+            <button class="nav-button" data-form="task-list">Task List</button>
+            <button class="nav-button" data-form="startup-checklist">Startup Checklist</button>
+            <button class="nav-button" data-form="shutdown-checklist">Shutdown Checklist</button>
+          </div>
         </div>
       </nav>
 

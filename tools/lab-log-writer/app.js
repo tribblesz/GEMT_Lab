@@ -1,6 +1,15 @@
 const state = {
   options: {},
   activeForm: "experiment-log",
+  collapsedGroups: {},
+};
+
+const SIDEBAR_STATE_KEY = "lab-log-writer-sidebar";
+const DEFAULT_GROUP_STATE = {
+  daily: false,
+  experiment: false,
+  reference: false,
+  operations: false,
 };
 
 const formConfigs = {
@@ -343,6 +352,54 @@ const form = document.getElementById("entry-form");
 const message = document.getElementById("message");
 const serverStatus = document.getElementById("server-status");
 
+function loadSidebarState() {
+  try {
+    const raw = window.localStorage.getItem(SIDEBAR_STATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return { ...DEFAULT_GROUP_STATE, ...parsed };
+  } catch (error) {
+    return { ...DEFAULT_GROUP_STATE };
+  }
+}
+
+function saveSidebarState() {
+  window.localStorage.setItem(SIDEBAR_STATE_KEY, JSON.stringify(state.collapsedGroups));
+}
+
+function applySidebarState() {
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const groupKey = group.dataset.group;
+    const collapsed = Boolean(state.collapsedGroups[groupKey]);
+    group.classList.toggle("collapsed", collapsed);
+
+    const toggle = group.querySelector(".nav-group-toggle");
+    if (toggle) {
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+    }
+  });
+}
+
+function expandActiveGroup() {
+  const activeButton = document.querySelector(`.nav-button[data-form="${state.activeForm}"]`);
+  if (!activeButton) return;
+
+  const group = activeButton.closest(".nav-group");
+  if (!group) return;
+
+  const groupKey = group.dataset.group;
+  if (!groupKey) return;
+
+  state.collapsedGroups[groupKey] = false;
+  saveSidebarState();
+  applySidebarState();
+}
+
+function toggleGroup(groupKey) {
+  state.collapsedGroups[groupKey] = !state.collapsedGroups[groupKey];
+  saveSidebarState();
+  applySidebarState();
+}
+
 function currentLocalDateTimeValue() {
   const now = new Date();
   const offset = now.getTimezoneOffset();
@@ -533,6 +590,8 @@ function renderForm(formKey) {
     button.classList.toggle("active", button.dataset.form === formKey);
   });
 
+  expandActiveGroup();
+
   formTitle.textContent = config.title;
   formDescription.textContent = config.description;
   formSections.innerHTML = "";
@@ -634,9 +693,15 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => renderForm(button.dataset.form));
 });
 
+document.querySelectorAll(".nav-group-toggle").forEach((button) => {
+  button.addEventListener("click", () => toggleGroup(button.closest(".nav-group").dataset.group));
+});
+
 document.getElementById("refresh-options").addEventListener("click", fetchOptions);
 form.addEventListener("submit", handleSubmit);
 
 const params = new URLSearchParams(window.location.search);
 state.activeForm = params.get("form") || "experiment-log";
+state.collapsedGroups = loadSidebarState();
+applySidebarState();
 fetchOptions();
