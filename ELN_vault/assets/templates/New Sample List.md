@@ -10,4 +10,4 @@ tags:
 > [!warning] Legacy template
 > `New Sample List` has been retired for the APT/FIM vault.
 >
-> Use [[Specimens]] for active specimen records.
+> Use [[Lists/Experiment/Specimens|Specimens]] for active specimen records.

@@ -23,13 +23,13 @@ This guide explains how to use the active APT/FIM templates in the vault and how
 
 ## Recommended Order
 
-1. Create or review an [[Instrument Configurations|instrument configuration]].
-2. Create an [[Experiment Series]] for the integration campaign or test program.
-3. Create one or more [[Specimens]] for the hardware or sample under test.
-4. Review the [[Startup Checklists]] and [[Shutdown Checklists]] you want operators to follow.
+1. Create or review an [[Lists/Operations/Instrument Configurations|instrument configuration]].
+2. Create an [[Lists/Experiment/Experiment Series|Experiment Series]] for the integration campaign or test program.
+3. Create one or more [[Lists/Experiment/Specimens|Specimens]] for the hardware or sample under test.
+4. Review the [[Lists/Operations/Startup Checklists|Startup Checklists]] and [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]] you want operators to follow.
 5. Start the local GUI writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`.
-6. Create an [[Experiment Logs|experiment log]] for each actual startup, test, and shutdown sequence.
-7. Create one [[MCP Image Logs|MCP image log]] per MCP image and one [[Ion Column Image Logs|ion column image log]] per ion-column image when those images are part of the session record.
+6. Create an [[Lists/Experiment/Experiment Logs|experiment log]] for each actual startup, test, and shutdown sequence.
+7. Create one [[Lists/Experiment/MCP Image Logs|MCP image log]] per MCP image and one [[Lists/Experiment/Ion Column Image Logs|ion column image log]] per ion-column image when those images are part of the session record.
 
 ## Instrument Configurations
 
@@ -118,7 +118,7 @@ This note is useful for:
 - imaging gas
 - image file names and links
 
-Each MCP image log should link back to the parent [[Experiment Logs|experiment log]].
+Each MCP image log should link back to the parent [[Lists/Experiment/Experiment Logs|experiment log]].
 
 ## Ion Column Image Logs
 
@@ -134,7 +134,7 @@ This note is useful for:
 - image file names and links
 - signal-only image file names and links
 
-Each ion-column image log should link back to the parent [[Experiment Logs|experiment log]].
+Each ion-column image log should link back to the parent [[Lists/Experiment/Experiment Logs|experiment log]].
 
 ## Practical Example
 

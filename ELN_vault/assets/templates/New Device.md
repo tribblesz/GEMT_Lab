@@ -10,4 +10,4 @@ tags:
 > [!warning] Legacy template
 > `New Device` has been retired for the APT/FIM vault.
 >
-> Use [[Instrument Configurations]], [[Experiment Series]], or [[Experiment Logs]] instead.
+> Use [[Lists/Operations/Instrument Configurations|Instrument Configurations]], [[Lists/Experiment/Experiment Series|Experiment Series]], or [[Lists/Experiment/Experiment Logs|Experiment Logs]] instead.

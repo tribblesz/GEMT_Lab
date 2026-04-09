@@ -12,6 +12,11 @@ This tool provides form-style data entry for:
 - `ion-column-image-log`
 - `instrument-configuration`
 - `specimen`
+- `contact`
+- `daily-note`
+- `meeting`
+- `note`
+- `task-list`
 - `startup-checklist`
 - `shutdown-checklist`
 

@@ -12,6 +12,7 @@ tags:
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/navbar", {});
 ```
+
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```

@@ -10,4 +10,4 @@ tags:
 > [!warning] Legacy template
 > `New Chemical` has been retired for the APT/FIM vault.
 >
-> Use [[Experiment Logs]] for gas usage records and [[Instrument Configurations]] for allowed gas defaults instead.
+> Use [[Lists/Experiment/Experiment Logs|Experiment Logs]] for gas usage records and [[Lists/Operations/Instrument Configurations|Instrument Configurations]] for allowed gas defaults instead.

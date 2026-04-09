@@ -16,14 +16,14 @@ This page now mirrors the active APT/FIM workflow. For the main landing page, us
 
 # Active Work
 
-- [[Experiment Series]]
-- [[Experiment Logs]]
-- [[MCP Image Logs]]
-- [[Ion Column Image Logs]]
-- [[Specimens]]
-- [[Instrument Configurations]]
-- [[Startup Checklists]]
-- [[Shutdown Checklists]]
+- [[Lists/Experiment/Experiment Series|Experiment Series]]
+- [[Lists/Experiment/Experiment Logs|Experiment Logs]]
+- [[Lists/Experiment/MCP Image Logs|MCP Image Logs]]
+- [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]]
+- [[Lists/Experiment/Specimens|Specimens]]
+- [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
+- [[Lists/Operations/Startup Checklists|Startup Checklists]]
+- [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]
 - [[Data Records]]
 - [[Lists]]
 

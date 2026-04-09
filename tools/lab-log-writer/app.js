@@ -222,6 +222,88 @@ const formConfigs = {
       },
     ],
   },
+  contact: {
+    title: "Contact",
+    description: "Create a contact note from the GUI writer.",
+    sections: [
+      {
+        title: "Contact Details",
+        fields: [
+          { name: "noteName", label: "Note Name (optional)", type: "text", placeholder: "Defaults to Given + Family name" },
+          { name: "title", label: "Title", type: "text" },
+          { name: "givenName", label: "Given Name", type: "text" },
+          { name: "familyName", label: "Family Name", type: "text" },
+          { name: "workEmail", label: "Work Email", type: "text" },
+          { name: "workPhone", label: "Work Phone", type: "text" },
+          { name: "mobile", label: "Mobile", type: "text" },
+          { name: "fax", label: "Fax", type: "text" },
+          { name: "affiliation", label: "Affiliation", type: "text" },
+          { name: "division", label: "Division", type: "text" },
+          { name: "street", label: "Street", type: "text" },
+          { name: "building", label: "Building", type: "text" },
+          { name: "room", label: "Room", type: "text" },
+          { name: "city", label: "City", type: "text" },
+          { name: "zipCode", label: "Zip Code", type: "text" },
+          { name: "country", label: "Country", type: "text" },
+          { name: "jobPosition", label: "Job Position", type: "text" },
+          { name: "group", label: "Group", type: "text" },
+        ],
+      },
+    ],
+  },
+  "daily-note": {
+    title: "Daily Note",
+    description: "Create a daily note in the dated daily-notes folder structure.",
+    sections: [
+      {
+        title: "Daily Note",
+        fields: [
+          { name: "notes", label: "Starting Notes (optional)", type: "textarea", rows: 8, placeholder: "Optional notes to seed today's entry." },
+        ],
+      },
+    ],
+  },
+  meeting: {
+    title: "Meeting",
+    description: "Create a dated meeting note in the meetings archive.",
+    sections: [
+      {
+        title: "Meeting Details",
+        fields: [
+          { name: "meetingTitle", label: "Meeting Title", type: "text" },
+          { name: "meetingType", label: "Meeting Type", type: "text", placeholder: "Group meeting, review, planning..." },
+          { name: "location", label: "Location", type: "text" },
+          { name: "participants", label: "Participants", type: "comma-list", placeholder: "StarDustX, Participant 2" },
+          { name: "projectName", label: "Project / Series", type: "text" },
+        ],
+      },
+    ],
+  },
+  note: {
+    title: "Note",
+    description: "Create a general note in the Notes folder.",
+    sections: [
+      {
+        title: "Note Details",
+        fields: [
+          { name: "noteName", label: "Note Name", type: "text", placeholder: "Untitled" },
+          { name: "body", label: "Initial Body (optional)", type: "textarea", rows: 10 },
+        ],
+      },
+    ],
+  },
+  "task-list": {
+    title: "Task List",
+    description: "Create a reusable task list note in the Tasks folder.",
+    sections: [
+      {
+        title: "Task List Details",
+        fields: [
+          { name: "taskListName", label: "Task List Name", type: "text", placeholder: "My Tasks" },
+        ],
+      },
+    ],
+  },
   "startup-checklist": {
     title: "Startup Checklist",
     description: "Create a reusable startup checklist note.",

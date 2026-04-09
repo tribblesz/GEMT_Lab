@@ -12,9 +12,14 @@ tags:
 
 <div class="title" style="color:#edf">Lists</div>
 
+## Folders
+
+- Experiment: [[Lists/Experiment/Experiment Series|Experiment Series]], [[Lists/Experiment/Experiment Logs|Experiment Logs]], [[Lists/Experiment/MCP Image Logs|MCP Image Logs]], [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]], [[Lists/Experiment/Specimens|Specimens]], [[Lists/Experiment/Experiment Runs|Experiment Runs]]
+- Reference: [[Lists/Reference/Contacts|Contacts]], [[Lists/Reference/Publications|Publications]], [[Lists/Reference/ELN Note Versions|ELN Note Versions]]
+- Operations: [[Lists/Operations/Instrument Configurations|Instrument Configurations]], [[Lists/Operations/Startup Checklists|Startup Checklists]], [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]], [[Lists/Operations/Daily Notes|Daily Notes]], [[Lists/Operations/Meetings|Meetings]], [[Lists/Operations/Notes|Notes]]
 
 # Experiment Work
-- ### [[Experiment Series]]
+- ### [[Lists/Experiment/Experiment Series|Experiment Series]]
   ```dataview
   LIST
   FROM #experiment-series AND !"assets"
@@ -22,7 +27,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Experiment Logs]]
+- ### [[Lists/Experiment/Experiment Logs|Experiment Logs]]
   ```dataview
   LIST
   FROM #experiment-log AND !"assets"
@@ -30,7 +35,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[MCP Image Logs]]
+- ### [[Lists/Experiment/MCP Image Logs|MCP Image Logs]]
   ```dataview
   LIST
   FROM #mcp-image-log AND !"assets"
@@ -38,7 +43,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Ion Column Image Logs]]
+- ### [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]]
   ```dataview
   LIST
   FROM #ion-column-image-log AND !"assets"
@@ -46,7 +51,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Specimens]]
+- ### [[Lists/Experiment/Specimens|Specimens]]
   ```dataview
   LIST
   FROM #specimen AND !"assets"
@@ -54,7 +59,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Instrument Configurations]]
+- ### [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
   ```dataview
   LIST
   FROM #instrument-config AND !"assets"
@@ -62,7 +67,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Startup Checklists]]
+- ### [[Lists/Operations/Startup Checklists|Startup Checklists]]
   ```dataview
   LIST
   FROM #startup-checklist AND !"assets"
@@ -70,7 +75,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Shutdown Checklists]]
+- ### [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]
   ```dataview
   LIST
   FROM #shutdown-checklist AND !"assets"
@@ -86,7 +91,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Meetings]]
+- ### [[Lists/Operations/Meetings|Meetings]]
   ```dataview
   LIST
   FROM #meeting AND !"assets"
@@ -94,7 +99,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Daily Notes]]
+- ### [[Lists/Operations/Daily Notes|Daily Notes]]
   ```dataview
   LIST
   FROM #daily-note AND !"assets"
@@ -102,7 +107,7 @@ tags:
   LIMIT 6
   ```
 
-- ### [[Notes]]
+- ### [[Lists/Operations/Notes|Notes]]
   ```dataview
   LIST
   FROM "Notes" AND !"assets"

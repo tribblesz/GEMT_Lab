@@ -4,123 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "c54e130139c2ea09",
+        "id": "7106bfd319a663b2",
         "type": "tabs",
         "children": [
           {
-            "id": "88ecd175a9696e95",
+            "id": "d15b1cc8fe00286d",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/02-using-callout.md",
+                "file": "Daily Notes/2025/Tester.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02-using-callout"
+              "title": "Tester"
             }
           },
           {
-            "id": "4ed5cd165acf5c70",
+            "id": "aeb0b4c0d2940d33",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lists/Startup Checklists.md",
+                "file": "Lists/Operations/Daily Notes.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Startup Checklists"
-            }
-          },
-          {
-            "id": "2d5846453e9e7105",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Experiment Series.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Experiment Series"
-            }
-          },
-          {
-            "id": "33e071de275d1df2",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Experiment Series.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Experiment Series"
-            }
-          },
-          {
-            "id": "1b50d528715924e0",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Ion Column Image Logs.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Ion Column Image Logs"
-            }
-          },
-          {
-            "id": "6f97a776edb68cf0",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Instrument Configurations.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Instrument Configurations"
-            }
-          },
-          {
-            "id": "a9fc2938440a7a42",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Experiment Logs.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Experiment Logs"
-            }
-          },
-          {
-            "id": "36b0b68de240a3ac",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "Lists/Processes.md",
-                "mode": "preview",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "Processes"
+              "title": "Daily Notes"
             }
           }
         ],
-        "currentTab": 7
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -285,10 +201,10 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Lists/Processes.md"
+                "file": "Lists/Operations/Daily Notes.md"
               },
               "icon": "lucide-info",
-              "title": "File properties for Processes"
+              "title": "File properties for Daily Notes"
             }
           }
         ],
@@ -314,36 +230,36 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "36b0b68de240a3ac",
+  "active": "aeb0b4c0d2940d33",
   "lastOpenFiles": [
-    "Lists/Projects.md",
-    "Lists/Processes.md",
-    "Lists/Meetings.md",
-    "Lists/Lists.md",
-    "Lists/Analyses.md",
-    "Lists/Notes.md",
-    "Lists/Contacts.md",
-    "assets/literature templates/Import Publication.md",
-    "Lists/Daily Notes.md",
-    "Contacts/Primary Contact.md",
-    "Experiment Logs/345435.md",
-    "Lists/Experiment Logs.md",
+    "Lists/Operations/Instrument Configurations.md",
+    "Lists/Experiment/Specimens.md",
+    "Lists/Operations/Notes.md",
+    "Lists/Operations/Daily Notes.md",
+    "Lists/Legacy/Instruments.md",
+    "Lists/Legacy/Processes.md",
+    "Lists/Legacy/Devices.md",
+    "Lists/Legacy/Projects.md",
+    "Lists/Legacy/Samples.md",
+    "Lists/Reference/Instrument Configurations.md",
+    "Lists/Experiment/Ion Column Image Logs.md",
+    "Lists/Experiment/Experiment Series.md",
+    "Lists/Experiment/Experiment Runs.md",
+    "Lists/Experiment/Experiment Logs.md",
     "Home.md",
-    "Experiment Logs/2026-04-09-sdfsdf-log.md",
-    "Experiment Logs/2026-04-09-sdf-sdf.md",
-    "Experiment Logs",
-    "Lists/Experiment Runs.md",
     "Lists/Experiment Series.md",
-    "Specimens/sdf.md",
-    "Specimens/1.md",
-    "Lists/Ion Column Image Logs.md",
-    "Specimens/specimen.md",
-    "Specimens/tester.md",
-    "Specimens",
-    "Lists/Instruments.md",
-    "Lists/Instrument Configurations.md",
+    "Daily Notes/2025/Tester.md",
+    "Lists/Daily Notes.md",
+    "Untitled.md",
+    "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/02-using-callout.md",
+    "Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/03-using-list.md",
+    "Lists/ELN Note Versions.md",
     "Lists/Startup Checklists.md",
-    "Lists/Specimens.md",
+    "Lists/Experiment Logs.md",
+    "Lists/Processes.md",
+    "Lists/Contacts.md",
+    "Experiment Logs",
+    "Specimens",
     "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-SmartSEM-software-manual.pdf",
     "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-MERLIN_Brochure.pdf",
     "Resources/Instruments/ZEISS - Merlin/Documents/ZEISS_MERLIN_FE-SEM.jpg",

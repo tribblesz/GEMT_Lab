@@ -112,59 +112,29 @@ Chemicals can be categorized by a *type* and *field of use* attribute.  To assur
 ##### Cells
 
 
-##### Devices
+##### Device And Instrument Notes
 
-Devices are used for synthesis or sample preparation. A device note provides information about the device such as device type, manufacturer and more as well as a set of parameters used to operate the device. Devices can be added to a process and their parameters will be automatically copied into the meta data section of the process.
+The original device-, instrument-, process-, project-, sample-, and analysis-specific note flows are no longer part of the active vault structure.
 
-New devices can be added from the [[Devices]] note in the  `List` folder, which provides an overview about all devices you have added to your Obsidian ELN vault. To add a new device just push the **Add Device** button at the top of the note.
+Use the current APT/FIM pages instead:
 
-##### Instruments
-
-Devices are used for sample analysis. A device note provides information about the instrument such as instrument type, manufacturer, available analytical methods and more. For each method a set of parameters can be specified. When creating a new analysis note for a sample the instrument and analysis method can be selected and the parameters of the analysis method will be automatically copied into the meta data section of the analysis.
-
-New instruments can be added from the [[Instruments]] note in the  `List` folder, which provides an overview about all instruments you have added to your Obsidian ELN vault. To add a new instrument just push the **Add Instrument** button at the top of the note.
-
-#### Processes
-
-Processes are used to describe the parameters and steps necessary to synthesize, prepare or modify a sample.
-
-Before creating a new process make sure that you have created a [[#Devices|device note]] for each of the devices you are using for your process. To add a new process go to the [[Processes]] note in the  `List` folder, which provides an overview about all processes you have added to your Obsidian ELN vault. To add a new process just push the **Add Process** button at the top of the note.
-
-#### Projects
-
-Before adding sample to your ELN you should create a project the sample belong to. To add a new project go to the [[Projects]] note in the  `List` folder, which provides an overview about all projects you have added to your Obsidian ELN vault. To add a new project just push the **Add Project** button at the top of the note.
-
-This will create a new folder for each project in the `Project` folder which contains a note with the project name and a sample list note. The note with the project name provides a dashboard view for your project and allows you to quickly navigate to the sample list of your project, open the recently added samples or analysis notes.
-
-> ***Note**:* You can use the project folder to add further notes and subfolders to store relevant information about your project.
-
-#### Samples
-
-To add a new sample to a project go to the sample list note in the project folder and push the **Add Sample** button at the top of the note.
-
-#### Analyses
-
-Analysis can be added from the respective sample note. Open the sample note you want to add an analysis for and push the **Add Analysis** button at the top of the note.
+- [[Lists/Operations/Instrument Configurations|Instrument Configurations]] for machine state, interlocks, gauges, and operating defaults.
+- [[Lists/Experiment/Experiment Series|Experiment Series]] for campaign planning.
+- [[Lists/Experiment/Specimens|Specimens]] for physical items under test.
+- [[Lists/Experiment/Experiment Logs|Experiment Logs]] for actual operating sessions.
 
 ## Step 7: ELN List Views
 
 In the section above you already got to know the list view pages for 
 - [[Chemicals]]
-- [[Electrodes]]
-- [[Devices]]
-- [[Instruments]]
-- [[Processes]]
-- [[Projects]]
-- [[Samples]]
-- [[Analyses]]
 
 Additional list views are available for
-- [[Contacts]]
-- [[Daily Notes]]
+- [[Lists/Reference/Contacts|Contacts]]
+- [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Labs]]
-- [[Meetings]]
-- [[Notes]]
-- [[Publications]]
+- [[Lists/Operations/Meetings|Meetings]]
+- [[Lists/Operations/Notes|Notes]]
+- [[Lists/Reference/Publications|Publications]]
 
 ## Step 8: Change the look of Obsidian and your notes
 

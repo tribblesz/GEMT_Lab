@@ -2,11 +2,11 @@
 ELN version: 0.5.0
 cssclasses:
   - wide-page
-date created: 2026-04-08
+date created: 2023-03-27
 author: StarDustX
-note type: redirect-list
+note type: note-list
 tags:
-  - list/redirect
+  - list/notes
 ---
 
 ```dataviewjs
@@ -17,12 +17,8 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-## Redirect
-
-The active notebook structure does not use a separate device catalog.
-
-- Use [[Instrument Configurations]] for the current hybrid FIM/APT operating setup.
-- Use [[Experiment Series]] and [[Experiment Logs]] for instrument behavior and testing context.
+> [!info] Note entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Note Writer](http://127.0.0.1:8765/?form=note).
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

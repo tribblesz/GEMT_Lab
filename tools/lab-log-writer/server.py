@@ -4,7 +4,7 @@ import json
 import re
 import textwrap
 import webbrowser
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -60,6 +60,22 @@ def current_timestamp() -> str:
 
 def current_date() -> str:
     return datetime.now().strftime("%Y-%m-%d")
+
+
+def current_year() -> str:
+    return datetime.now().strftime("%Y")
+
+
+def current_month_number() -> str:
+    return datetime.now().strftime("%m")
+
+
+def current_month_name() -> str:
+    return datetime.now().strftime("%B")
+
+
+def current_weekday_name() -> str:
+    return datetime.now().strftime("%A")
 
 
 def count_indent(line: str) -> int:
@@ -757,6 +773,320 @@ specimen:
     return file_path, f"{fm}\n\n{body}\n"
 
 
+def build_contact(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    given_name = str(payload.get("givenName", "")).strip()
+    family_name = str(payload.get("familyName", "")).strip()
+    note_name = str(payload.get("noteName", "")).strip() or " ".join(part for part in [given_name, family_name] if part).strip() or "Contact"
+    folder = VAULT_ROOT / settings["folders"].get("contacts", "Contacts")
+    file_path = folder / f"{sanitize_file_name(note_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclasses:
+  - normal-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: contact
+tags:
+  - "#contact"
+name:
+  title: {yaml_string(str(payload.get('title', '')))}
+  given name: {yaml_string(given_name)}
+  family name: {yaml_string(family_name)}
+contact:
+  work:
+    email: {yaml_string(str(payload.get('workEmail', '')))}
+    phone: {yaml_string(str(payload.get('workPhone', '')))}
+    mobile: {yaml_string(str(payload.get('mobile', '')))}
+    fax: {yaml_string(str(payload.get('fax', '')))}
+address:
+  work:
+    affiliation: {yaml_string(str(payload.get('affiliation', '')))}
+    division: {yaml_string(str(payload.get('division', '')))}
+    street: {yaml_string(str(payload.get('street', '')))}
+    building: {yaml_string(str(payload.get('building', '')))}
+    room: {yaml_string(str(payload.get('room', '')))}
+    city: {yaml_string(str(payload.get('city', '')))}
+    zip code: {yaml_string(str(payload.get('zipCode', '')))}
+    country: {yaml_string(str(payload.get('country', '')))}
+job position: {yaml_string(str(payload.get('jobPosition', '')))}
+group: {yaml_string(str(payload.get('group', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/navbar", {{}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_header", {{}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/contact", {{obsidian: obsidian}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_footer", {{}});
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_daily_note(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    now = datetime.now()
+    date_created = current_date()
+    year = current_year()
+    month_number = current_month_number()
+    month_name = current_month_name()
+    weekday_name = current_weekday_name()
+    note_title = f"{date_created} - {weekday_name}, {now.day}. {month_name}"
+    folder = VAULT_ROOT / settings["folders"].get("daily notes", "Daily Notes") / year / f"{month_number} {month_name}"
+    file_path = folder / f"{sanitize_file_name(note_title)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclass: daily-note
+banner: "![[obsidian-eln-banner.png]]"
+banner_y: 0.336
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: daily-note
+tag:
+  - " #daily-note "
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/navbar", {{}});
+        ```
+
+        <div class="title" style="color:#edf">
+          {note_title}
+        </div>
+
+        ```dataviewjs
+          await dv.view("/assets/javascript/dataview/views/daily_note_nav", {{}});
+        ```
+
+        # Daily Note - {note_title}
+
+          - ### Tasks
+            - [ ] Today 1
+            - [ ] Today 2
+            - [ ] Today 3
+
+        - ### 
+          ```dataviewjs
+          await dv.view("/assets/javascript/dataview/views/motivation_image", {{}});
+          ```
+
+        - ### Progress
+          ```dataviewjs
+          await dv.view("/assets/javascript/dataview/views/circular_progress", {{}});
+          ```
+
+        # Notes
+
+        {str(payload.get("notes", "")).strip()}
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_footer", {{}});
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def add_minutes(time_string: str, minutes: int) -> str:
+    base = datetime.strptime(time_string, "%H:%M")
+    return (base.replace(year=1970, month=1, day=1) + timedelta(minutes=minutes)).strftime("%H:%M")
+
+
+def build_meeting(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    now = datetime.now()
+    date_created = current_date()
+    year = current_year()
+    month_number = current_month_number()
+    month_name = current_month_name()
+    rounded_minutes = round(now.minute / 15) * 15
+    if rounded_minutes == 60:
+      start_dt = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    else:
+      start_dt = now.replace(minute=rounded_minutes, second=0, microsecond=0)
+    starting_time = start_dt.strftime("%H:%M")
+    meeting_title = str(payload.get("meetingTitle", "")).strip() or "Meeting"
+    folder = VAULT_ROOT / settings["folders"].get("meetings", "Meetings") / year / f"{month_number} {month_name}"
+    file_path = folder / f"{sanitize_file_name(f'{date_created} - {meeting_title}')}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclass: meeting
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: meeting
+tag:
+  - " #meeting "
+meeting:
+   title: {yaml_string(meeting_title)}
+   type: {yaml_string(str(payload.get('meetingType', '')))}
+   date: {yaml_string(date_created)}
+   time: {yaml_string(starting_time)}
+   location: {yaml_string(str(payload.get('location', '')))}
+   participants:
+{yaml_list([item.strip() for item in str(payload.get('participants', '')).split(',') if item.strip()], indent=5, fallback='First Participant')}
+project:
+   name: {yaml_string(str(payload.get('projectName', '')))}
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/navbar", {{}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_header", {{}});
+        ```
+
+        ## Meeting Info
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/meeting", {{obsidian: obsidian}});
+        ```
+
+        ## Agenda & Minutes
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/meeting_topics", {{  }});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/meeting_topics", {{  }});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/meeting_topics", {{  }});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/meeting_topics", {{  }});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_footer", {{}});
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_note(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    note_name = str(payload.get("noteName", "")).strip() or "Untitled"
+    folder = VAULT_ROOT / settings["folders"].get("notes", "Notes")
+    file_path = folder / f"{sanitize_file_name(note_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclass: normal-page
+date created: {yaml_string(date_created)}
+author: {yaml_string('StarDustX')}
+note type: note
+tag:
+  - " #note "
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/navbar", {{}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_header", {{}});
+        ```
+
+        {str(payload.get("body", "")).strip()}
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_footer", {{}});
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
+def build_task_list(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
+    date_created = current_date()
+    task_list_name = str(payload.get("taskListName", "")).strip() or "My Tasks"
+    folder = VAULT_ROOT / settings["folders"].get("tasks", "Tasks")
+    file_path = folder / f"{sanitize_file_name(task_list_name)}.md"
+
+    fm = frontmatter(
+        f"""
+ELN version: {yaml_string(str(settings.get('eln_version', '0.5.0')))}
+cssclass: task-list
+author: {yaml_string('StarDustX')}
+date created: {yaml_string(date_created)}
+note type: task-list
+tag:
+  - " #task "
+"""
+    )
+
+    body = textwrap.dedent(
+        f"""
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/navbar", {{}});
+        ```
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_header", {{}});
+        ```
+
+        ## Progress
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/circular_progress", {{}});
+        ```
+
+        ## High Priority Tasks
+
+        - [ ] High Priority Task
+
+        ## Medium Priority Tasks
+
+        - [ ] Medium Priority Task
+
+        ## Low Priority Tasks
+
+        - [ ] Low Priority Task
+
+        ```dataviewjs
+        await dv.view("/assets/javascript/dataview/views/note_footer", {{}});
+        ```
+        """
+    ).strip()
+
+    return file_path, f"{fm}\n\n{body}\n"
+
+
 def build_startup_checklist(payload: dict[str, object], settings: dict[str, object]) -> tuple[Path, str]:
     date_created = current_date()
     checklist_name = str(payload.get("checklistName", "")).strip() or "APT FIM Startup Checklist"
@@ -881,6 +1211,11 @@ BUILDERS = {
     "ion-column-image-log": build_ion_column_image_log,
     "instrument-configuration": build_instrument_configuration,
     "specimen": build_specimen,
+    "contact": build_contact,
+    "daily-note": build_daily_note,
+    "meeting": build_meeting,
+    "note": build_note,
+    "task-list": build_task_list,
     "startup-checklist": build_startup_checklist,
     "shutdown-checklist": build_shutdown_checklist,
 }

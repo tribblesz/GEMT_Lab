@@ -17,13 +17,8 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Daily Note
-type note(tmp-daily-note-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Daily Note.md
-templater true
-class accent-button
-```
+> [!info] Daily note entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Daily Note Writer](http://127.0.0.1:8765/?form=daily-note).
 
 ```dataview
 TABLE WITHOUT ID

@@ -21,14 +21,19 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 
 The local GUI writer is the preferred entry path for:
 
-- [[Experiment Series]]
-- [[Experiment Logs]]
-- [[MCP Image Logs]]
-- [[Ion Column Image Logs]]
-- [[Instrument Configurations]]
-- [[Specimens]]
-- [[Startup Checklists]]
-- [[Shutdown Checklists]]
+- [[Lists/Experiment/Experiment Series|Experiment Series]]
+- [[Lists/Experiment/Experiment Logs|Experiment Logs]]
+- [[Lists/Experiment/MCP Image Logs|MCP Image Logs]]
+- [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]]
+- [[Lists/Operations/Instrument Configurations|Instrument Configurations]]
+- [[Lists/Experiment/Specimens|Specimens]]
+- [[Lists/Reference/Contacts|Contacts]]
+- [[Lists/Operations/Daily Notes|Daily Notes]]
+- [[Lists/Operations/Meetings|Meetings]]
+- [[Lists/Operations/Notes|Notes]]
+- [[Tasks/My Tasks|Task Lists]]
+- [[Lists/Operations/Startup Checklists|Startup Checklists]]
+- [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]
 
 ## Start The Writer
 
@@ -52,6 +57,11 @@ The writer serves a local browser UI at `http://127.0.0.1:8765/`.
 - [Experiment Series Writer](http://127.0.0.1:8765/?form=experiment-series)
 - [Instrument Configuration Writer](http://127.0.0.1:8765/?form=instrument-configuration)
 - [Specimen Writer](http://127.0.0.1:8765/?form=specimen)
+- [Contact Writer](http://127.0.0.1:8765/?form=contact)
+- [Daily Note Writer](http://127.0.0.1:8765/?form=daily-note)
+- [Meeting Writer](http://127.0.0.1:8765/?form=meeting)
+- [Note Writer](http://127.0.0.1:8765/?form=note)
+- [Task List Writer](http://127.0.0.1:8765/?form=task-list)
 - [Startup Checklist Writer](http://127.0.0.1:8765/?form=startup-checklist)
 - [Shutdown Checklist Writer](http://127.0.0.1:8765/?form=shutdown-checklist)
 
@@ -60,7 +70,7 @@ The writer serves a local browser UI at `http://127.0.0.1:8765/`.
 - Obsidian remains the reader, search, and Dataview layer.
 - The writer creates markdown notes directly in `ELN_vault`.
 - `Experiment Runs` and `Data Records` remain available only as legacy note flows.
-- Core APT/FIM creation no longer depends on Templater user scripts.
+- Core note creation now routes through the local writer instead of Templater.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

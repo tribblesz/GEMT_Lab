@@ -17,14 +17,8 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Meeting
-type note(tmp-meeting-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Meeting.md
-templater true
-class accent-button
-```
-
+> [!info] Meeting entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Meeting Writer](http://127.0.0.1:8765/?form=meeting).
 
 ## 2024
 
@@ -38,7 +32,6 @@ FROM #meeting AND !"assets"
 WHERE file.ctime.year = 2024
 SORT file.ctime DESC
 ```
-
 
 ## 2025
 

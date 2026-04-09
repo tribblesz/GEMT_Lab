@@ -66,10 +66,25 @@ code {
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
   padding: 1rem;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   background: #111b24;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.nav-group-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9cb6c8;
+  padding: 0.1rem 0.2rem;
 }
 
 .nav-button,

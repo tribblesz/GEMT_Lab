@@ -17,13 +17,8 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Contact
-type note(tmp-contact-<% tp.date.now("YYYYMMDDHHmmssSSS") %>) template
-action assets/templates/New Contact.md
-templater true
-class accent-button
-```
+> [!info] Contact entry
+> Start the local writer with `python tools/lab-log-writer/server.py` or `tools\lab-log-writer\start_writer.bat`, then open [Contact Writer](http://127.0.0.1:8765/?form=contact).
 
 ```dataview
 TABLE WITHOUT ID
