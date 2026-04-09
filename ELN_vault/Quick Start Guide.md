@@ -2,8 +2,8 @@
 ELN version: 0.5.0
 cssclasses:
   - normal-page
-date created: 2025-03-13
-author: Name Surname
+date created: 2026-04-08
+author: StarDustX
 note type: how-to
 tags:
   - "#note/how-to"
@@ -17,15 +17,27 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-1. All configuration and template files of the vault are located in the **assets** folder. Before you begin to create new notes you should edit the [[ELN Settings]] file and change the values for the note author and operators. The note author will be added to every note you create and the operators define a list of operators to choose from when you create a sample or analysis note. If you define only one operator this will be added as default to all your sample and analysis notes without showing a dialog to select the operator. 
-   
-   > [!Info] ELN Settings Info
-   > The [[ELN Settings]] file stores all settings of the ELN as YAML metadata. The current ELN version (0.5.0) introduces a new dataviewjs based editor for nested metadata. This editor is similar to the native properties editor of obsidian, but supports nested properties which are essential for storing the metadata of ELN. Be aware that loading of the [[ELN Settings]] file may take a bit longer, since it contains a lot of metadata fields and rendering through a dataviewjs view is a bit slower than an a plugin. That said, one of the next milestones on the ELN development roadmap will be the migration of some of the core features, including the properties editor, into an obsidian plugin.
+1. All configuration and template files for the vault are located in the **assets** folder. Before creating notes, open [[ELN Settings]] and update the note author, operator list, folder paths, experiment run statuses, allowed gases, and any gauge labels that differ from your instrument. These values drive the prompts used when you create new APT/FIM notes.
 
-2. Open the [[Home]] dashboard page. The [[Home]] dashboard and [[ELN Dashboard]] give you an overview about your projects, samples, analyses, etc. that you have recently added to your vault. Open the [[Projects]] list page by clicking on the title of the project tile and create a new project by selecting the **New Project** button. This will add a folder to the **Projects** folder with the name of your project. This folder will also contain a sample list file, that dynamically lists all samples you add to your project.
-3. Before starting to add your first sample, you should take some time to create new entries for the [[Chemicals]], [[Devices]] and [[Processes]] you use to create your samples. Devices define a set of parameters that will be added to a process when selecting the device during the process creation. Therefore, you should add the devices before defining your processes.
-4. The processes you create serve as templates for the metadata added to your sample. So although you can assign values to the parameters of a process, it is generally a better idea to leave them blank unless you always use the same parameter values for your sample.
-5. Once you set up your ELN vault and created the first samples, you may want to add analyses to your samples. Analyses can be added directly form the corresponding sample note. However, before adding an analysis you should create an instrument note for the analytical instrument. Similar to the device note where you can define the device parameters, you can define measurement parameters for each analytical method the device is offering. Again these parameters serve as template for the parameters added to your analytical notes. This is an example for an instrument note: [[ZEISS - Merlin]].
+   > [!Info] ELN Settings Info
+   > The [[ELN Settings]] file stores the active APT/FIM schema as YAML metadata. It defines the folders, run modes, specimen types, configuration types, gases, and standard monitoring readbacks used throughout the vault.
+
+2. Open the [[Home]] dashboard page. This dashboard is now focused on APT/FIM work: experiment series, experiment runs, specimens, instrument configurations, startup checklists, shutdown checklists, and data records.
+3. Create or review an [[Instrument Configurations|instrument configuration]] before logging runs. This note is where you document gauge mapping, alignment settings archives, interlocks, startup targets, and default imaging settings.
+4. Create the working [[Startup Checklists]] and [[Shutdown Checklists]] that your operators will follow. These pages are meant to capture the vacuum gauges, pump currents, temperatures, and gas state that must be recorded at startup and shutdown.
+5. Create an [[Experiment Series]] note for the integration campaign you are running. Use the series note to document the purpose of the campaign, the independent and dependent variables, emergency stop conditions, and the expected data products.
+6. Create [[Specimens]] for the tips, needles, coupons, or reference specimens you are loading into the instrument. Each specimen note stores the specimen ID, type, material system, preparation state, and handling notes.
+7. Create an [[Experiment Runs|experiment run]] for each startup/test/shutdown sequence you perform. The run template includes dedicated sections for:
+   - startup monitoring
+   - during-test observations
+   - shutdown monitoring
+   - raw data links
+   - MCP image metadata
+   - ion column image metadata
+   - freeform experiment notes
+8. Create a [[Data Records]] note when you want a dedicated page for raw-file inventories, alignment settings links, MCP or ion column image metadata, and plot/photo formatting checks.
+9. Use [[Daily Notes]] for general lab-day context, operator handoff notes, and links back to the specific runs completed that day.
+10. For a template-by-template walkthrough of the APT/FIM workflow, read [[APT FIM Template Workflow]].
 
 
 

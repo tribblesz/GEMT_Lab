@@ -2,7 +2,7 @@
 ELN version: 0.4.2
 cssclass: normal-page
 date created: 2023-02-28
-author: Frieder Scheiba
+author: StarDustX
 note type: electrochemical cell
 tags: electrochemical-cell
 cell:

@@ -2,7 +2,7 @@
 ELN version: 0.4.2
 cssclass: normal-page
 date created: 2023-05-05
-author: Name Surname
+author: StarDustX
 note type: instrument
 tag: 
   - " #instrument/SE_inlens"
@@ -19,7 +19,7 @@ instrument:
     building: XXX
     room: 1xx
   contact: 
-    - "[[Joe Public]]"
+    - "[[Primary Contact]]"
   documentation: 
     - "[[Zeiss-SmartSEM-software-manual.pdf|SmartSEM Software Manual]]"
     - "[[Zeiss-MERLIN_Brochure.pdf|Zeiss Merlin Brochure]]"

@@ -1,1 +1,1 @@
-<% await tp.user.new_project(tp) -%>
+<% await tp.user.new_experiment_series(tp) -%>

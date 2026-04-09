@@ -2,11 +2,11 @@
 ELN version: 0.5.0
 cssclasses:
   - wide-page
-date created: 2023-03-27
-author: Frieder Scheiba
-note type: analysis-list
+date created: 2026-04-08
+author: StarDustX
+note type: redirect-list
 tags:
-  - list/analysis
+  - list/redirect
 ---
 
 ```dataviewjs
@@ -17,17 +17,12 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```dataview
-TABLE WITHOUT ID
-  file.link as Analysis, 
-  project.name as Project,
-  analysis.method as Method, 
-  file.ctime as Created,
-  file.mtime as Modified
-FROM #analysis AND !"assets"
-SORT project.name, sample.name, analysis.method ASC
-```
+## Redirect
 
+The active notebook structure now uses [[Experiment Runs]] and [[Data Records]] instead of generic analysis pages.
+
+- Use [[Experiment Runs]] for the actual operating record of a startup, test, or shutdown.
+- Use [[Data Records]] for raw file inventories, image metadata, and formatting checks.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

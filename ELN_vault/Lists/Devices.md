@@ -2,11 +2,11 @@
 ELN version: 0.5.0
 cssclasses:
   - wide-page
-date created: 2024-07-17
-author: Frieder Scheiba
-note type: device-list
+date created: 2026-04-08
+author: StarDustX
+note type: redirect-list
 tags:
-  - list/devices
+  - list/redirect
 ---
 
 ```dataviewjs
@@ -17,25 +17,12 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name Add Device
-type command
-action Templater: Insert assets/templates/New Device.md
-class accent-button
-```
+## Redirect
 
+The active notebook structure does not use a separate device catalog.
 
-```dataview
-TABLE WITHOUT ID
-  file.link as Device, 
-  device.manufacturer as Manufacturer,
-  device.model as Model,
-  device.type as "Type",
-  device.contact as "Contact", 
-  device.location.building as Building, 
-  device.location.room as Room
-FROM #device
-```
+- Use [[Instrument Configurations]] for the current hybrid FIM/APT operating setup.
+- Use [[Experiment Series]] and [[Experiment Runs]] for instrument behavior and testing context.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

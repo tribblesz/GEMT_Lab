@@ -3,7 +3,7 @@ ELN version: 0.5.0
 cssclasses:
   - normal-page
 date created: 2024-02-21
-author: Name Surname
+author: StarDustX
 note type: how-to
 tags:
   - "#note"

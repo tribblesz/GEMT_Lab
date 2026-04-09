@@ -3,120 +3,45 @@ ELN version: 0.5.0
 cssclasses:
   - wide-page
   - dashboard
-banner: "![[obsidian-eln-banner.png]]"
-banner_y: 0.336
-date created: 2023-03-25
-author: Frieder Scheiba
+date created: 2026-04-08
+author: StarDustX
 note type: dashboard
 tags:
   - dashboard
 ---
 
-<div class="title" style="color:#edf">ELN Dashboard</div>
+<div class="title" style="color:#edf">APT / FIM Dashboard</div>
 
-# Project Management
+This page now mirrors the active APT/FIM workflow. For the main landing page, use [[Home]].
 
-- ### [[Projects]]
-  ```dataview
-  LIST
-  FROM #project
-  WHERE project.status = "active"
-  ```
+# Active Work
 
+- [[Experiment Series]]
+- [[Experiment Runs]]
+- [[Specimens]]
+- [[Instrument Configurations]]
+- [[Startup Checklists]]
+- [[Shutdown Checklists]]
+- [[Data Records]]
+- [[Lists]]
 
-- ### [[Lists]]
-	- [[Processes]]
-	- [[Samples]]
-	- [[Analyses]]
-	- [[Chemicals]]
-	- [[Devices]]
-	- [[Instruments]]
+## Recent Experiment Runs
 
-- ### [[Lists]] (continued)
-	- [[Electrodes]]
-	- [[Samples]]
-	- [[Analyses]]
-	- [[Chemicals]]
-	- [[Devices]]
-	- [[Instruments]]
+```dataview
+LIST
+FROM #experiment-run AND !"assets"
+SORT file.mtime.ts DESC
+LIMIT 8
+```
 
-# Experiments (recently edited)
+## Recent Data Records
 
-- ### [[Processes]]
-  ```dataview
-  LIST
-  FROM #process
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Samples]]
-  ```dataview
-  LIST
-  FROM #sample
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Analyses]]
-  ```dataview
-  LIST
-  FROM #analysis 
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-# Resources (recently edited)
-
-- ### [[Chemicals]]
-  ```dataview
-  LIST
-  FROM #chemical
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Devices]]
-  ```dataview
-  LIST
-  FROM #device 
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Instruments]]
-  ```dataview
-  LIST
-  FROM #analysis 
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Electrodes]]
-  ```dataview
-  LIST
-  FROM #electrode 
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Cells]]
-  ```dataview
-  LIST
-  FROM #electrochemical-cell
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-- ### [[Labs]]
-  ```dataview
-  LIST
-  FROM #lab 
-  SORT file.mtime.ts ASC
-  LIMIT 6
-  ```
-
-
+```dataview
+LIST
+FROM #data-record AND !"assets"
+SORT file.mtime.ts DESC
+LIMIT 8
+```
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

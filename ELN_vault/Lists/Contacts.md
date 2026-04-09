@@ -3,7 +3,7 @@ ELN version: 0.5.0
 cssclasses:
   - wide-page
 date created: 2023-05-25
-author: Frieder Scheiba
+author: StarDustX
 note type: contact-list
 tags:
   - list/contacts

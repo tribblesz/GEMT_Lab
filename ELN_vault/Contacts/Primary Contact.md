@@ -2,31 +2,31 @@
 ELN version: 0.4.2
 cssclass: normal-page
 date created: 2024-07-17
-author: Frieder Scheiba
+author: StarDustX
 note type: contact
 tag: contact
 name:
   title:
-  given name: Joe
-  family name: Public
+  given name: Primary
+  family name: Contact
 contact:
   work:
-    email: joe.public@something.edu
-    phone: +01 xxx xxx xxx
-    mobile: 
-    fax: +01 xxx xxx xxx
+    email: contact@example.edu
+    phone: +00 xxx xxx xxx
+    mobile:
+    fax: +00 xxx xxx xxx
 address:
   work:
-    affiliation: Affiliation XYZ
-    division: Institute for Science
-    street: Science Plaza 1
-    building: 100
-    room: 42
+    affiliation: Research Facility
+    division: Instrument Operations
+    street: Research Street 1
+    building: Main Building
+    room: Control Room
     city: City
-    zip code: XXXXX
+    zip code: 00000
     country: Country
-job position: Position
-group: Group
+job position: Primary Contact
+group: Operations
 ---
 
 ```dataviewjs

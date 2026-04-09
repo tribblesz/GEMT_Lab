@@ -2,143 +2,110 @@
 ELN version: 0.5.0
 note:
   author:
-    - name: Name Surname
-      initials: NN
+    - name: StarDustX
+      initials: SDX
 operators:
-  - name: Nick Nobody
-    initials: NN
-  - name: Anne Anybody
-    initials: AA
+  - name: StarDustX
+    initials: SDX
 folder:
   local data: /path/to_your/local_data/folder
   remote data: /path/to_your/remote_data/folder
+  experiment series: Experiment Series
+  experiment runs: Experiment Runs
+  specimens: Specimens
+  instrument configurations: Instrument Configurations
+  startup checklists: Checklists/Startup
+  shutdown checklists: Checklists/Shutdown
+  data records: Data Records
   contacts: Contacts
   daily notes: Daily Notes
-  projects: Projects
-  samples: Experiments/Samples
-  analyses: Experiments/Analyses
-  processes: Experiments/Processes
-  chemicals: Resources/Chemicals
-  devices: Resources/Devices
-  instruments: Resources/Instruments
   meetings: Meetings
   tasks: Tasks
+  notes: Notes
   templates: assets/templates
-  analysis methods: assets/Analysis Settings
   custom templates: assets/templates/Custom Templates
   dataview queries: assets/templates/DataView Queries
   mermaid charts: assets/templates/Mermaid Charts
-  sample types: assets/Sample Types
-chemical:
+experiment series:
   type:
-    - active material
-    - binder
-    - conductive additive
-    - current collector
-    - electrolyte
-    - inorganic compound
-    - metal
-    - organic compound
-    - polymer
-    - semiconductor
-    - separator
-    - solvent
-  field of use:
-    - electrode
-    - electrochemical cell
-    - synthesis
-    - undefined
-device:
-  type:
-    - broad ion beam cutter
-    - balance
-    - ball mill
-    - coater
-    - coin cell crimp
-    - electrode cutter
-    - furnace
-    - glovebox
-    - ion polishing device
-    - mixer
-    - oven
-    - undefined
-  method:
-    - drying
-    - calcination
-    - coating
-    - cutting
-    - inert sample handling
-    - milling
-    - mixing
-    - polishing
-    - sealing
-    - weighing
-    - undefined
-process:
-  type:
-    - synthesis
-    - calcination
-    - pyrolysis
-    - mixing
-    - electrode coating
-    - cell assembly
-    - undefined
-instrument:
-  type:
-    - infrared spectrometer
-    - potentiostat
-    - raman microscope
-    - scanning electron microscope
-    - transmission electron microscope
-    - x-ray diffractometer
-    - x-ray photoelectron spectrometer
-    - undefined
-  techniques:
-    scanning electron microscope:
-      - SE inlens
-      - SE thorny
-      - EsB
-      - EDX
-      - STEM
-      - EBSD
-    transmission electron microscope:
-      - HR-TEM
-      - TEM imaging
-      - SAD
-      - HADF imaging
-    raman microscope:
-      - raman spectroscopy
-      - raman mapping
-    infrared spectrometer:
-      - transmission spectroscopy
-      - ATR spectroscopy
-    x-ray diffractometer:
-      - diffraction (reflection mode)
-      - diffraction (transmission mode)
-    x-ray photoelectron spectroscopy:
-      - survey spectrum
-      - atom spectrum
-    potentiostat:
-      - GCPL
-      - CV
-      - EIS
-      - iR drop
-      - GITT
-      - PITT
-      - chronoamperometry
-    undefined:
-      - undefined
-sample:
-  type:
-    - compound
-    - electrode
-    - electrochemical cell
-analysis:
+    - integration status
+    - commissioning
+    - vacuum characterization
+    - startup qualification
+    - shutdown qualification
+    - timing synchronization
+    - MCP imaging
+    - ion column imaging
+    - APT acquisition
+    - FIM acquisition
   status:
     - planned
+    - active
+    - paused
+    - completed
+specimen:
+  type:
+    - APT needle
+    - FIM tip
+    - reference specimen
+    - calibration specimen
+    - coupon
+    - witness specimen
+    - other
+instrument configuration:
+  type:
+    - APT
+    - FIM
+    - Hybrid
+    - Vacuum only
+    - Imaging only
+experiment run:
+  mode:
+    - APT
+    - FIM
+    - Hybrid
+    - startup only
+    - shutdown only
+  status:
+    - planned
+    - setup
     - running
     - completed
-    - failed
+    - aborted
+    - needs review
+gas:
+  allowed:
+    - none
+    - He
+    - Ne
+    - H2
+    - O2
+    - N2
+    - Ar
+    - Kr
+    - Xe
+gauge:
+  main chamber:
+    name: Ion Gauge
+  load lock:
+    name: LL Wide Range Gauge
+  ion column:
+    name: Ion Column Wide Range Gauge
+monitoring:
+  startup:
+    - main chamber pressure
+    - main ion pump current and pressure
+    - puck nest temperature
+    - cryo setpoint
+    - load lock pressure
+    - ion column pressure
+    - ion column ion pump current and pressure
+  shutdown:
+    - main chamber pressure
+    - load lock pressure
+    - ion column pressure
+    - main ion pump current and pressure
+    - ion column ion pump current and pressure
 ---
 
 ## Settings

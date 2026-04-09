@@ -1,1 +1,1 @@
-<% await tp.user.new_process(tp) -%>
+<% await tp.user.new_startup_checklist(tp) -%>

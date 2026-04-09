@@ -1,1 +1,1 @@
-<% await tp.user.new_analysis(tp) -%>
+<% await tp.user.new_experiment_run(tp) -%>

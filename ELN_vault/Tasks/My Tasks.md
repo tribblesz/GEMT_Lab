@@ -1,7 +1,7 @@
 ---
 ELN version: 0.4.2
 cssclass: task-list
-author: Name Surname
+author: StarDustX
 date created: 2024-07-31
 note type: task-list
 tag:

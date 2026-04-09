@@ -1,7 +1,7 @@
 ---
 ELN version: 0.4.2
 cssclass: normal-page
-author: Name Surname
+author: StarDustX
 date created: 2024-08-07
 note type: process
 tag: 

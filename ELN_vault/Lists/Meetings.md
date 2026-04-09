@@ -3,7 +3,7 @@ ELN version: 0.5.0
 cssclasses:
   - wide-page
 date created: 2023-03-11
-author: Frieder Scheiba
+author: StarDustX
 note type: meeting-list
 tags:
   - list/meeting

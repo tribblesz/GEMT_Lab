@@ -1,1 +1,1 @@
-<% await tp.user.new_sample(tp) -%>
+<% await tp.user.new_specimen(tp) -%>

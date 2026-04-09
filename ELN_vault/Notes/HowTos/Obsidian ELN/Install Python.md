@@ -1,12 +1,12 @@
 ---
 # Obsidian ELN, version: 0.3.2
-# author: Dr. Frieder Scheiba, mail: frieder.scheiba@kit.edu
+# author: Dr. StarDustX, mail: frieder.scheiba@kit.edu
 # copyright: GNU Affero General Public License v3.0
 #
 ELN info:
    template: Meeting - Template
    version: 0.3.2
-   author: Frieder Scheiba
+   author: StarDustX
    copyright: GNU Affero General Public License v3.0
 # Layout / Styling
 cssclass: normal-page
@@ -14,7 +14,7 @@ cssclass: normal-page
 parent: "[[Home]]"
 # Note Information
 date created: 2024-02-20
-author: Name Surname
+author: StarDustX
 note type: note
 tag:
   - " #note "

@@ -2,7 +2,7 @@
 ELN version: 0.4.2
 cssclass: normal-page
 date created: 2024-07-26
-author: Name Surname
+author: StarDustX
 note type: lab
 tag: 
   - " #lab/Builing_XXX"
@@ -12,7 +12,7 @@ lab:
    building: XXX
    room: 1xx
    contact: 
-      - "[[Joe Public]]"
+      - "[[Primary Contact]]"
 ---
 
 ```dataviewjs

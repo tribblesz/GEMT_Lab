@@ -3,7 +3,7 @@ ELN version: 0.5.0
 cssclasses:
   - wide-page
 date created: 2023-03-27
-author: Frieder Scheiba
+author: StarDustX
 note type: note-list
 tags:
   - list/notes
@@ -22,15 +22,6 @@ name New Note
 type command
 action Templater: Insert assets/templates/New Note.md
 class accent-button
-```
-
-```dataview
-TABLE WITHOUT ID
-  file.link as "Note", 
-  author as Author,
-  note-type as Type,
-  date-created as Date
-FROM "Notes"
 ```
 
 ```dataviewjs

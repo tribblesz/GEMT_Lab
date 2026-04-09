@@ -3,10 +3,8 @@ ELN version: 0.5.0
 cssclasses:
   - wide-page
   - dashboard
-banner: "![[obsidian-eln-banner.png]]"
-banner_y: 0.336
-date created: 2023-03-25
-author: Frieder Scheiba
+date created: 2026-04-08
+author: StarDustX
 note type: list
 tags:
   - list/lists
@@ -15,67 +13,60 @@ tags:
 <div class="title" style="color:#edf">Lists</div>
 
 
-# Work
-- ### [[Projects]]
+# Experiment Work
+- ### [[Experiment Series]]
   ```dataview
   LIST
-  FROM #project
-  WHERE project.status = "active"
-  ```
-
-- ### [[Samples]]
-  ```dataview
-  LIST
-  FROM #sample AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #experiment-series AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Analyses]]
+- ### [[Experiment Runs]]
   ```dataview
   LIST
-  FROM #analysis AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #experiment-run AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Chemicals]]
+- ### [[Specimens]]
   ```dataview
   LIST
-  FROM #chemical AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #specimen AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Instruments]]
+- ### [[Instrument Configurations]]
   ```dataview
   LIST
-  FROM #instrument  AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #instrument-config AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Devices]]
+- ### [[Startup Checklists]]
   ```dataview
   LIST
-  FROM #device AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #startup-checklist AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Processes]]
+- ### [[Shutdown Checklists]]
   ```dataview
   LIST
-  FROM #process AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #shutdown-checklist AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
-- ### [[Labs]]
+- ### [[Data Records]]
   ```dataview
   LIST
-  FROM #lab AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #data-record AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
@@ -83,28 +74,23 @@ tags:
   ```dataview
   LIST
   FROM #meeting AND !"assets"
-  SORT file.mtime.ts ASC
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 
 - ### [[Daily Notes]]
   ```dataview
   LIST
-  FROM #daily-note  AND !"assets"
-  SORT file.mtime.ts ASC
+  FROM #daily-note AND !"assets"
+  SORT file.mtime.ts DESC
   LIMIT 6
-  ``` 
-
-- ### Literature
-	 - [[Books]]
-	 - [[Publications]]
+  ```
 
 - ### [[Notes]]
   ```dataview
   LIST
   FROM "Notes" AND !"assets"
-  WHERE note-type != "tutorial"
-  SORT file.mtime.ts ASC
+  SORT file.mtime.ts DESC
   LIMIT 6
   ```
 

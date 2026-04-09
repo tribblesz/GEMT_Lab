@@ -1,6 +1,6 @@
 ---
 tags: obsidian, tutorial/video
-author: Frieder Scheiba
+author: StarDustX
 note type: tutorial
 category: video
 ---

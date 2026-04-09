@@ -5,7 +5,7 @@ cssclass:
   - strong-accent
   - accent-heading
 date-created: 2023-06-01
-author: Frieder Scheiba
+author: StarDustX
 note type: how-to
 tags:
   - " #note/how-to  "
@@ -15,6 +15,13 @@ tags:
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 # Obisidan ELN - Getting Started Guide
+
+> [!Warning]
+> This guide reflects the original general-purpose ELN structure and is no longer the active onboarding path for this vault.
+>
+> Use [[Quick Start Guide]] for the current APT/FIM workflow built around experiment series, experiment runs, specimens, instrument configurations, startup checklists, shutdown checklists, and data records.
+>
+> For template-specific instructions, use [[APT FIM Template Workflow]].
 
 > [!Example] TOC
 >   - [[#Step 1 Familiarize yourself with Obsidian]]

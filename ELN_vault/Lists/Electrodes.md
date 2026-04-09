@@ -2,11 +2,11 @@
 ELN version: 0.5.0
 cssclasses:
   - wide-page
-date created: 2023-04-02
-author: Frieder Scheiba
-note type: electrode-list
+date created: 2026-04-08
+author: StarDustX
+note type: redirect-list
 tags:
-  - list/electrodes
+  - list/redirect
 ---
 
 ```dataviewjs
@@ -17,40 +17,12 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-## Reference Electrodes
+## Retired From Active Notebook
 
-```dataview
-TABLE WITHOUT ID
-  file.link as "Ref. Electrode", 
-  electrode["redox pair"] as "Redox Pair",
-  electrode["standard potential"] as "Std. Potential / V"
-FROM #electrode/reference 
-SORT electrode["standard potential"] ASC
-```
+This page is retained only as historical reference from the original electrochemistry-oriented vault.
 
-## Standard Electrodes
-
-```dataview
-TABLE WITHOUT ID
-  file.link as "Electrode", 
-  electrode["redox pair"] as "Redox Pair",
-  electrode["standard potential"] as "Std. Potential / V"
-FROM #electrode/standard 
-SORT electrode["standard potential"]  ASC
-```
-
-
-## Electrode Samples
-
-```dataview
-TABLE WITHOUT ID
-  file.link as Electrode, 
-  project.name as Project,
-  date-created as Date
-FROM #sample
-WHERE sample.type = "electrode"
-SORT project.name, file.link ASC
-```
+- Use [[Specimens]] for the active specimen catalog.
+- Use [[Experiment Runs]] and [[Data Records]] for active APT/FIM experiment logging.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

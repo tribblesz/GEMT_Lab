@@ -2,7 +2,7 @@
 ELN version: 0.4.2
 cssclass: normal-page
 date created: 2024-07-22
-author: Name Surname
+author: StarDustX
 note type: device
 tag: 
   - " #device/coin_cell_crimp/MTI_MSK-110"
@@ -16,7 +16,7 @@ device:
     building: XXX
     room: 1xx
   contact: 
-      - "[[Joe Public]]"
+      - "[[Primary Contact]]"
   documentation: 
     - "[video tutorial](https://youtu.be/QilzQVG0R4Y?feature=shared)"
   url: "[link to manufacturer](https://www.mtixtl.com/CompactHydraulicCrimpingMachineOneforAllButtonCells-MSK-110.aspx)"

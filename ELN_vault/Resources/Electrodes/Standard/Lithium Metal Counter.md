@@ -2,7 +2,7 @@
 ELN version: 0.3.2
 cssclass: normal-page
 date created: 2023-05-05
-author: Frieder Scheiba
+author: StarDustX
 note type: standard electrode
 tags: 
    - " #electrode/standard"

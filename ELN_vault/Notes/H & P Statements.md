@@ -2,7 +2,7 @@
 ELN version: 0.5.0
 cssclass: wide-page
 date created: 2023-03-07
-author: Frieder Scheiba
+author: StarDustX
 note type: safety information
 source: wikipedia.org
 tags: safety/statements

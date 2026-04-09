@@ -2,11 +2,11 @@
 ELN version: 0.5.0
 cssclasses:
   - wide-page
-date created: 2023-03-11
-author: Frieder Scheiba
-note type: project-list
+date created: 2026-04-08
+author: StarDustX
+note type: redirect-list
 tags:
-  - list/projects
+  - list/redirect
 ---
 
 ```dataviewjs
@@ -17,40 +17,12 @@ await dv.view("/assets/javascript/dataview/views/navbar", {});
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
 
-```button
-name New Project
-type command
-action Templater: Insert assets/templates/New Project.md
-class accent-button
-```
+## Redirect
 
-## Active Projects
+The active notebook structure now uses [[Experiment Series]] instead of project pages.
 
-```dataview
-TABLE WITHOUT ID
-  file.link as Project, 
-  author as Author, 
-  project.start as Start,
-  project.end as End,
-  project.type as Type, 
-  date-created as Date
-FROM #project 
-WHERE project.status = "active"
-```
-
-## Completed Projects
-
-```dataview
-TABLE WITHOUT ID
-  file.link as project, 
-  author as Author, 
-  project.start as Start,
-  project.end as End,
-  project.type as Type, 
-  date-created as Date
-FROM #project 
-WHERE project.status = "completed"
-```
+- Use [[Experiment Series]] for integration campaigns and planned variable sweeps.
+- Use [[Experiment Runs]] for actual startup, test, and shutdown records.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

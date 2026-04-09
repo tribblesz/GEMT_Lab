@@ -27,20 +27,32 @@
       "template": "assets/templates/New Meeting.md"
     },
     {
-      "folder": "Resources/Chemicals",
-      "template": "assets/templates/New Chemical.md"
+      "folder": "Experiment Series",
+      "template": "assets/templates/New Experiment Series.md"
     },
     {
-      "folder": "Resources/Devices",
-      "template": "assets/templates/New Device.md"
+      "folder": "Experiment Runs",
+      "template": "assets/templates/New Experiment Run.md"
     },
     {
-      "folder": "Resources/Instruments",
-      "template": "assets/templates/New Instrument.md"
+      "folder": "Specimens",
+      "template": "assets/templates/New Specimen.md"
     },
     {
-      "folder": "Experiments/Processes",
-      "template": "assets/templates/New Process.md"
+      "folder": "Instrument Configurations",
+      "template": "assets/templates/New Instrument Configuration.md"
+    },
+    {
+      "folder": "Checklists/Startup",
+      "template": "assets/templates/New Startup Checklist.md"
+    },
+    {
+      "folder": "Checklists/Shutdown",
+      "template": "assets/templates/New Shutdown Checklist.md"
+    },
+    {
+      "folder": "Data Records",
+      "template": "assets/templates/New Data Record.md"
     },
     {
       "folder": "Tasks",
@@ -61,15 +73,15 @@
   "syntax_highlighting": true,
   "syntax_highlighting_mobile": false,
   "enabled_templates_hotkeys": [
-    "assets/templates/New Analysis.md",
-    "assets/templates/New Chemical.md",
+    "assets/templates/New Experiment Run.md",
+    "assets/templates/New Experiment Series.md",
     "assets/templates/New Contact.md",
-    "assets/templates/New Device.md",
-    "assets/templates/New Instrument.md",
+    "assets/templates/New Data Record.md",
+    "assets/templates/New Instrument Configuration.md",
     "assets/templates/New Note.md",
-    "assets/templates/New Process.md",
-    "assets/templates/New Project.md",
-    "assets/templates/New Sample.md"
+    "assets/templates/New Shutdown Checklist.md",
+    "assets/templates/New Specimen.md",
+    "assets/templates/New Startup Checklist.md"
   ],
   "startup_templates": [
     "assets/templates/Startup Template.md"

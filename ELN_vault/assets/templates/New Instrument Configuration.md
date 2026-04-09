@@ -1,0 +1,1 @@
+<% await tp.user.new_instrument_configuration(tp) -%>
