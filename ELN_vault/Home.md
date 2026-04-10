@@ -117,6 +117,32 @@ tags:
   LIMIT 6
   ```
 
+# Resources
+
+- ### [[Resources/APT-FIM/Library|APT/FIM Resources]]
+  ```dataview
+  TABLE WITHOUT ID
+    file.link as "Summary Note",
+    provider as "Provider",
+    model as "Model",
+    file.mtime as "Modified"
+  FROM "Resources/APT-FIM/Summaries"
+  SORT file.mtime DESC
+  LIMIT 6
+  ```
+
+- ### Topic Notes
+  ```dataview
+  TABLE WITHOUT ID
+    file.link as "Topic Note",
+    provider as "Provider",
+    model as "Model",
+    file.mtime as "Modified"
+  FROM "Resources/APT-FIM/Topics"
+  SORT file.mtime DESC
+  LIMIT 6
+  ```
+
 # Open Tasks
 
 ```dataview

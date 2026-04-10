@@ -16,6 +16,7 @@ if str(MODULE_ROOT) not in sys.path:
     sys.path.insert(0, str(MODULE_ROOT))
 
 from resources import (
+    build_provider_presets,
     ensure_directories,
     ingest_pdf,
     pdf_index_key,
@@ -29,6 +30,7 @@ from resources import (
     synthesize_topic_summary,
     summarize_pdf_chunks,
     topic_note_name,
+    unsummarized_pdf_rel_paths,
 )
 
 
@@ -1292,6 +1294,10 @@ def ensure_within(root: Path, relative_value: str) -> Path:
 
 def selected_pdf_paths(payload: dict[str, object], pdf_dir: Path) -> list[Path]:
     requested = payload.get("pdfs") or []
+    if payload.get("unsummarizedOnly"):
+        _, paths = resource_settings_and_paths()
+        files = scan_pdf_library(paths["pdfs"], paths["summaries"], paths["index"])
+        requested = unsummarized_pdf_rel_paths(files)
     if not requested:
         return sorted(pdf_dir.rglob("*.pdf"))
     return [ensure_within(pdf_dir, str(item)) for item in requested]
@@ -1323,6 +1329,18 @@ def get_resource_status() -> dict[str, object]:
         },
         "files": files,
     }
+
+
+def get_resource_presets() -> dict[str, object]:
+    return {"presets": build_provider_presets()}
+
+
+def get_resource_pdf(relative_value: str) -> tuple[Path, bytes]:
+    _, paths = resource_settings_and_paths()
+    pdf_path = ensure_within(paths["pdfs"], relative_value)
+    if not pdf_path.exists() or pdf_path.suffix.lower() != ".pdf":
+        raise FileNotFoundError(relative_value)
+    return pdf_path, pdf_path.read_bytes()
 
 
 def run_resource_ingest(payload: dict[str, object]) -> dict[str, object]:
@@ -1461,6 +1479,31 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/resources/files":
             payload = json.dumps(get_resource_status()).encode("utf-8")
             self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
+        if path == "/api/resources/presets":
+            payload = json.dumps(get_resource_presets()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
+        if path == "/api/resources/pdf":
+            rel_path = parse_qs(parsed.query).get("path", [""])[0]
+            try:
+                pdf_path, content = get_resource_pdf(rel_path)
+            except FileNotFoundError:
+                self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
+                return
+            except Exception as exc:
+                self._send(
+                    HTTPStatus.BAD_REQUEST,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+                return
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "application/pdf")
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Content-Disposition", f'inline; filename="{pdf_path.name}"')
+            self.end_headers()
+            self.wfile.write(content)
             return
 
         self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")

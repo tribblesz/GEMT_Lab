@@ -3,7 +3,10 @@ const state = {
   activeForm: "experiment-log",
   collapsedGroups: {},
   resourceFiles: [],
+  resourcePresets: [],
   selectedResourcePaths: {},
+  resourcePreviewPath: "",
+  resourceTopicTitle: "",
   resourceConfig: {
     provider: "ollama",
     baseUrl: "",
@@ -439,6 +442,15 @@ function syncResourceSelections() {
       state.selectedResourcePaths[file.pdf_rel_path] = false;
     }
   }
+  if (
+    state.resourcePreviewPath &&
+    !state.resourceFiles.some((file) => file.pdf_rel_path === state.resourcePreviewPath)
+  ) {
+    state.resourcePreviewPath = "";
+  }
+  if (!state.resourcePreviewPath && state.resourceFiles.length) {
+    state.resourcePreviewPath = state.resourceFiles[0].pdf_rel_path;
+  }
 }
 
 async function fetchOptions() {
@@ -446,6 +458,7 @@ async function fetchOptions() {
     const response = await fetch("./api/options");
     const data = await response.json();
     state.options = data;
+    fetchResourcePresets();
     serverStatus.textContent = "Connected";
     serverStatus.classList.add("status-ok");
     renderForm(state.activeForm);
@@ -453,6 +466,19 @@ async function fetchOptions() {
     serverStatus.textContent = "Connection failed";
     serverStatus.classList.remove("status-ok");
     showMessage("Could not load lookup data from the writer server.", "error");
+  }
+}
+
+async function fetchResourcePresets() {
+  try {
+    const response = await fetch("./api/resources/presets");
+    const data = await response.json();
+    state.resourcePresets = data.presets || [];
+    if (state.activeForm === "resource-library") {
+      renderResourcesPanel();
+    }
+  } catch (error) {
+    state.resourcePresets = [];
   }
 }
 
@@ -637,7 +663,15 @@ function selectedPdfPaths() {
     .map((file) => file.pdf_rel_path);
 }
 
-function resourceConfigPayload() {
+function unsummarizedPdfPaths() {
+  return state.resourceFiles.filter((file) => !file.has_summary).map((file) => file.pdf_rel_path);
+}
+
+function resourcePdfUrl(relativePath) {
+  return `./api/resources/pdf?path=${encodeURIComponent(relativePath)}`;
+}
+
+function resourceConfigPayload(pdfsOverride = null) {
   state.resourceConfig = {
     provider: document.getElementById("resource-provider")?.value || "ollama",
     baseUrl: document.getElementById("resource-base-url")?.value.trim() || "",
@@ -648,11 +682,12 @@ function resourceConfigPayload() {
   };
   return {
     ...state.resourceConfig,
-    pdfs: selectedPdfPaths(),
+    pdfs: pdfsOverride || selectedPdfPaths(),
   };
 }
 
 function resourceRowMarkup(file) {
+  const previewUrl = resourcePdfUrl(file.pdf_rel_path);
   return `
     <tr>
       <td><input type="checkbox" class="resource-checkbox" data-resource-path="${escapeHtml(file.pdf_rel_path)}" ${state.selectedResourcePaths[file.pdf_rel_path] ? "checked" : ""}></td>
@@ -661,22 +696,69 @@ function resourceRowMarkup(file) {
       <td>${file.chunk_count || 0}</td>
       <td>${file.has_summary ? escapeHtml(file.summary_name) : "-"}</td>
       <td>${file.has_embeddings ? "Yes" : "No"}</td>
+      <td>
+        <button type="button" class="secondary-button resource-preview-button" data-resource-preview="${escapeHtml(file.pdf_rel_path)}">Preview</button>
+        <a class="resource-open-link" href="${previewUrl}" target="_blank" rel="noreferrer">Open PDF</a>
+      </td>
       <td>${escapeHtml(file.modified_at || "")}</td>
     </tr>
   `;
 }
 
 function renderResourcesPanel() {
+  const summaryCount = state.resourceFiles.filter((file) => file.has_summary).length;
+  const unsummarizedCount = state.resourceFiles.length - summaryCount;
+  const selectedCount = selectedPdfPaths().length;
   const rows = state.resourceFiles.length
     ? state.resourceFiles.map(resourceRowMarkup).join("")
-    : '<tr><td colspan="7">No PDFs found. Put files into <code>ELN_vault/Resources/APT-FIM/PDFs</code>, then click Scan PDFs.</td></tr>';
+    : '<tr><td colspan="8">No PDFs found. Put files into <code>ELN_vault/Resources/APT-FIM/PDFs</code>, then click Scan PDFs.</td></tr>';
+  const presetOptions = [
+    '<option value="">Manual configuration</option>',
+    ...state.resourcePresets.map(
+      (preset) =>
+        `<option value="${escapeHtml(preset.id)}">${escapeHtml(preset.label)}</option>`
+    ),
+  ].join("");
+  const activePreset = state.resourcePresets.find(
+    (preset) =>
+      preset.provider === state.resourceConfig.provider &&
+      preset.baseUrl === state.resourceConfig.baseUrl &&
+      preset.model === state.resourceConfig.model &&
+      preset.embeddingModel === state.resourceConfig.embeddingModel
+  );
+  const previewMarkup = state.resourcePreviewPath
+    ? `
+      <div class="resource-preview-shell">
+        <div class="resource-preview-header">
+          <div>
+            <strong>Inline preview</strong>
+            <div class="resource-preview-caption"><code>${escapeHtml(state.resourcePreviewPath)}</code></div>
+          </div>
+          <a class="resource-open-link" href="${resourcePdfUrl(state.resourcePreviewPath)}" target="_blank" rel="noreferrer">Open in new tab</a>
+        </div>
+        <iframe class="resource-preview-frame" src="${resourcePdfUrl(state.resourcePreviewPath)}" title="PDF preview"></iframe>
+      </div>
+    `
+    : '<p class="resource-help">Choose a PDF preview to inspect it inline here.</p>';
 
   formSections.innerHTML = `
     <section class="form-section">
       <h3>PDF Library</h3>
       <p class="resource-help">Summaries are written into the vault so Obsidian can query them later.</p>
+      <div class="resource-stats">
+        <span class="resource-stat">PDFs: ${state.resourceFiles.length}</span>
+        <span class="resource-stat">Summaries: ${summaryCount}</span>
+        <span class="resource-stat">Unsummarized: ${unsummarizedCount}</span>
+        <span class="resource-stat">Selected: ${selectedCount}</span>
+      </div>
 
       <div class="resource-grid">
+        <label class="field">
+          <span>Provider Preset</span>
+          <select id="resource-preset">
+            ${presetOptions}
+          </select>
+        </label>
         <label class="field">
           <span>Provider</span>
           <select id="resource-provider">
@@ -713,6 +795,7 @@ function renderResourcesPanel() {
         <button id="resource-scan" type="button" class="secondary-button">Scan PDFs</button>
         <button id="resource-ingest" type="button" class="secondary-button">Ingest Selected</button>
         <button id="resource-summarize" type="button" class="primary-button">Summarize Selected</button>
+        <button id="resource-summarize-unsummarized" type="button" class="secondary-button">Summarize All Unsummarized</button>
       </div>
 
       <div class="resource-table-wrap">
@@ -725,6 +808,7 @@ function renderResourcesPanel() {
               <th>Chunks</th>
               <th>Summary Note</th>
               <th>Embeddings</th>
+              <th>Preview</th>
               <th>Modified</th>
             </tr>
           </thead>
@@ -734,11 +818,16 @@ function renderResourcesPanel() {
     </section>
 
     <section class="form-section">
+      <h3>PDF Preview</h3>
+      ${previewMarkup}
+    </section>
+
+    <section class="form-section">
       <h3>Topic Synthesis</h3>
       <div class="resource-grid">
         <label class="field field-wide">
           <span>Topic Title</span>
-          <input id="resource-topic-title" type="text" placeholder="Example: FIM image interpretation" />
+          <input id="resource-topic-title" type="text" placeholder="Example: FIM image interpretation" value="${escapeHtml(state.resourceTopicTitle)}" />
         </label>
       </div>
       <p class="resource-help">Use the selected PDFs' generated summary notes as synthesis sources.</p>
@@ -751,7 +840,30 @@ function renderResourcesPanel() {
   document.querySelectorAll(".resource-checkbox").forEach((checkbox) => {
     checkbox.addEventListener("change", (event) => {
       state.selectedResourcePaths[event.target.dataset.resourcePath] = event.target.checked;
+      renderResourcesPanel();
     });
+  });
+
+  document.querySelectorAll(".resource-preview-button").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      state.resourcePreviewPath = event.currentTarget.dataset.resourcePreview || "";
+      renderResourcesPanel();
+    });
+  });
+
+  document.getElementById("resource-preset")?.addEventListener("change", (event) => {
+    const preset = state.resourcePresets.find((item) => item.id === event.target.value);
+    if (!preset) {
+      return;
+    }
+    state.resourceConfig = {
+      ...state.resourceConfig,
+      provider: preset.provider,
+      baseUrl: preset.baseUrl || "",
+      model: preset.model || "",
+      embeddingModel: preset.embeddingModel || "",
+    };
+    renderResourcesPanel();
   });
 
   ["resource-provider", "resource-base-url", "resource-api-key", "resource-model", "resource-embedding-model", "resource-generate-embeddings"].forEach((id) => {
@@ -790,17 +902,35 @@ function renderResourcesPanel() {
   document.getElementById("resource-summarize")?.addEventListener("click", () =>
     runResourceAction("./api/resources/summarize", "Could not summarize selected PDFs.")
   );
+  document.getElementById("resource-summarize-unsummarized")?.addEventListener("click", () => {
+    const pdfs = unsummarizedPdfPaths();
+    if (!pdfs.length) {
+      showMessage("Every discovered PDF already has a summary note.", "success");
+      return;
+    }
+    runResourceAction(
+      "./api/resources/summarize",
+      "Could not summarize unsummarized PDFs.",
+      resourceConfigPayload(pdfs)
+    );
+  });
   document.getElementById("resource-synthesize")?.addEventListener("click", () =>
     runResourceSynthesis()
   );
+  document.getElementById("resource-topic-title")?.addEventListener("input", (event) => {
+    state.resourceTopicTitle = event.target.value;
+  });
+  if (activePreset) {
+    document.getElementById("resource-preset").value = activePreset.id;
+  }
 }
 
-async function runResourceAction(endpoint, defaultError) {
+async function runResourceAction(endpoint, defaultError, payloadOverride = null) {
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(resourceConfigPayload()),
+      body: JSON.stringify(payloadOverride || resourceConfigPayload()),
     });
     const data = await response.json();
     if (!response.ok) {
@@ -822,7 +952,7 @@ async function runResourceSynthesis() {
   const selected = state.resourceFiles.filter((file) => state.selectedResourcePaths[file.pdf_rel_path] && file.has_summary);
   const payload = {
     ...resourceConfigPayload(),
-    topicTitle: document.getElementById("resource-topic-title")?.value.trim() || "",
+    topicTitle: document.getElementById("resource-topic-title")?.value.trim() || state.resourceTopicTitle.trim() || "",
     summaryNotes: selected.map((file) => file.summary_name),
   };
 

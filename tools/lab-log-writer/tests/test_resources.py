@@ -69,6 +69,32 @@ class ResourcesTests(unittest.TestCase):
         self.assertIn("pages 3-4", note)
         self.assertIn("A concise summary.", note)
 
+    def test_filter_unsummarized_pdfs(self):
+        resources = load_resources_module()
+        files = [
+            {"pdf_rel_path": "one.pdf", "has_summary": False},
+            {"pdf_rel_path": "two.pdf", "has_summary": True},
+            {"pdf_rel_path": "three.pdf", "has_summary": False},
+        ]
+
+        selected = resources.unsummarized_pdf_rel_paths(files)
+
+        self.assertEqual(selected, ["one.pdf", "three.pdf"])
+
+    def test_provider_presets_include_expected_defaults(self):
+        resources = load_resources_module()
+
+        presets = resources.build_provider_presets()
+        preset_ids = [preset["id"] for preset in presets]
+
+        self.assertIn("ollama-local", preset_ids)
+        self.assertIn("lmstudio-local", preset_ids)
+        self.assertIn("openai-default", preset_ids)
+        self.assertIn("anthropic-default", preset_ids)
+        ollama = next(preset for preset in presets if preset["id"] == "ollama-local")
+        self.assertEqual(ollama["provider"], "ollama")
+        self.assertTrue(ollama["baseUrl"].startswith("http://"))
+
 
 if __name__ == "__main__":
     unittest.main()

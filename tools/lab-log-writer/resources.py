@@ -22,6 +22,45 @@ DEFAULT_RESOURCE_FOLDERS = {
     "index": "Resources/APT-FIM/.index",
 }
 
+PROVIDER_PRESETS = [
+    {
+        "id": "ollama-local",
+        "label": "Ollama local",
+        "provider": "ollama",
+        "baseUrl": "http://127.0.0.1:11434",
+        "model": "llama3.1",
+        "embeddingModel": "nomic-embed-text",
+        "notes": "Offline/local workflow through the Ollama API.",
+    },
+    {
+        "id": "lmstudio-local",
+        "label": "LM Studio local",
+        "provider": "lmstudio",
+        "baseUrl": "http://127.0.0.1:1234/v1",
+        "model": "local-model",
+        "embeddingModel": "text-embedding-model",
+        "notes": "OpenAI-compatible local endpoint exposed by LM Studio.",
+    },
+    {
+        "id": "openai-default",
+        "label": "OpenAI hosted",
+        "provider": "openai",
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "gpt-4.1-mini",
+        "embeddingModel": "text-embedding-3-small",
+        "notes": "Hosted workflow that requires an OpenAI API key.",
+    },
+    {
+        "id": "anthropic-default",
+        "label": "Anthropic hosted",
+        "provider": "anthropic",
+        "baseUrl": "https://api.anthropic.com/v1",
+        "model": "claude-3-5-sonnet-latest",
+        "embeddingModel": "",
+        "notes": "Hosted workflow for summaries and topic synthesis.",
+    },
+]
+
 
 def sanitize_file_name(value: str) -> str:
     safe = re.sub(r'[\\/:*?"<>|]+', "-", str(value or "").strip())
@@ -100,6 +139,14 @@ def summary_note_name(pdf_path: Path) -> str:
 
 def topic_note_name(topic_title: str) -> str:
     return f"{sanitize_file_name(topic_title)}.md"
+
+
+def build_provider_presets() -> list[dict[str, str]]:
+    return [dict(preset) for preset in PROVIDER_PRESETS]
+
+
+def unsummarized_pdf_rel_paths(files: list[dict[str, Any]]) -> list[str]:
+    return [str(item.get("pdf_rel_path", "")).strip() for item in files if item.get("pdf_rel_path") and not item.get("has_summary")]
 
 
 def scan_pdf_library(pdf_dir: Path, summary_dir: Path, index_dir: Path | None = None) -> list[dict[str, Any]]:
