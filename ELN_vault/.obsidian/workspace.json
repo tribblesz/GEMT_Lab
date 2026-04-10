@@ -230,8 +230,13 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "aeb0b4c0d2940d33",
+  "active": "4b8c203f4030494b",
   "lastOpenFiles": [
+    "Resources/APT-FIM/Topics",
+    "Resources/APT-FIM/Summaries",
+    "Resources/APT-FIM/PDFs",
+    "Resources/APT-FIM/Library.md",
+    "Resources/APT-FIM",
     "Lists/Lists.md",
     "Notes/HowTos/Obsidian ELN/Obsidian ELN Python App.md",
     "Notes/HowTos/Obsidian ELN/images/Obsidian ELN - Struktur.png",
@@ -264,8 +269,6 @@
     "Lists/Operations/Daily Notes.md",
     "Lists/Operations/Instrument Configurations.md",
     "Lists/Experiment/Specimens.md",
-    "Lists/Operations/Notes.md",
-    "Lists/Legacy/Instruments.md",
     "Experiment Logs",
     "Specimens",
     "Resources/Instruments/ZEISS - Merlin/Documents/Zeiss-SmartSEM-software-manual.pdf",
@@ -274,9 +277,6 @@
     "Notes/HowTos/Getting started with Obsidian/images/Pasted image 20250313150143.png",
     "Writing/Reports/Report BMBF/images/image_placeholder_r.png",
     "Notes/HowTos/Getting started with Obsidian/images",
-    "Daily Notes/2025/03 März",
-    "Daily Notes/2025",
-    "assets/javascript/dataview/views/test.js",
     "assets/images/Motivation/make_the_days_count.png",
     "Unbenannt.canvas"
   ]

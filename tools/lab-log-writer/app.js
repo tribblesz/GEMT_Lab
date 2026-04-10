@@ -2,6 +2,16 @@ const state = {
   options: {},
   activeForm: "experiment-log",
   collapsedGroups: {},
+  resourceFiles: [],
+  selectedResourcePaths: {},
+  resourceConfig: {
+    provider: "ollama",
+    baseUrl: "",
+    apiKey: "",
+    model: "",
+    embeddingModel: "",
+    generateEmbeddings: false,
+  },
 };
 
 const SIDEBAR_STATE_KEY = "lab-log-writer-sidebar";
@@ -260,6 +270,12 @@ const formConfigs = {
       },
     ],
   },
+  "resource-library": {
+    title: "Resources",
+    description: "Scan APT/FIM PDFs, extract text, generate summaries, and synthesize topic notes into the vault.",
+    customRenderer: "resources",
+    sections: [],
+  },
   "daily-note": {
     title: "Daily Note",
     description: "Create a daily note in the dated daily-notes folder structure.",
@@ -351,6 +367,7 @@ const formDescription = document.getElementById("form-description");
 const form = document.getElementById("entry-form");
 const message = document.getElementById("message");
 const serverStatus = document.getElementById("server-status");
+const formActions = document.querySelector(".form-actions");
 
 function loadSidebarState() {
   try {
@@ -407,6 +424,23 @@ function currentLocalDateTimeValue() {
   return local.toISOString().slice(0, 16);
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function syncResourceSelections() {
+  for (const file of state.resourceFiles) {
+    if (!(file.pdf_rel_path in state.selectedResourcePaths)) {
+      state.selectedResourcePaths[file.pdf_rel_path] = false;
+    }
+  }
+}
+
 async function fetchOptions() {
   try {
     const response = await fetch("./api/options");
@@ -419,6 +453,22 @@ async function fetchOptions() {
     serverStatus.textContent = "Connection failed";
     serverStatus.classList.remove("status-ok");
     showMessage("Could not load lookup data from the writer server.", "error");
+  }
+}
+
+async function fetchResourceFiles(showErrors = true) {
+  try {
+    const response = await fetch("./api/resources/files");
+    const data = await response.json();
+    state.resourceFiles = data.files || [];
+    syncResourceSelections();
+    if (state.activeForm === "resource-library") {
+      renderResourcesPanel();
+    }
+  } catch (error) {
+    if (showErrors) {
+      showMessage("Could not load PDF resource data from the writer server.", "error");
+    }
   }
 }
 
@@ -581,6 +631,223 @@ function appendRepeatableRow(tbody) {
   tbody.appendChild(clone);
 }
 
+function selectedPdfPaths() {
+  return state.resourceFiles
+    .filter((file) => state.selectedResourcePaths[file.pdf_rel_path])
+    .map((file) => file.pdf_rel_path);
+}
+
+function resourceConfigPayload() {
+  state.resourceConfig = {
+    provider: document.getElementById("resource-provider")?.value || "ollama",
+    baseUrl: document.getElementById("resource-base-url")?.value.trim() || "",
+    apiKey: document.getElementById("resource-api-key")?.value.trim() || "",
+    model: document.getElementById("resource-model")?.value.trim() || "",
+    embeddingModel: document.getElementById("resource-embedding-model")?.value.trim() || "",
+    generateEmbeddings: Boolean(document.getElementById("resource-generate-embeddings")?.checked),
+  };
+  return {
+    ...state.resourceConfig,
+    pdfs: selectedPdfPaths(),
+  };
+}
+
+function resourceRowMarkup(file) {
+  return `
+    <tr>
+      <td><input type="checkbox" class="resource-checkbox" data-resource-path="${escapeHtml(file.pdf_rel_path)}" ${state.selectedResourcePaths[file.pdf_rel_path] ? "checked" : ""}></td>
+      <td><code>${escapeHtml(file.pdf_rel_path)}</code></td>
+      <td>${file.has_index ? "Yes" : "No"}</td>
+      <td>${file.chunk_count || 0}</td>
+      <td>${file.has_summary ? escapeHtml(file.summary_name) : "-"}</td>
+      <td>${file.has_embeddings ? "Yes" : "No"}</td>
+      <td>${escapeHtml(file.modified_at || "")}</td>
+    </tr>
+  `;
+}
+
+function renderResourcesPanel() {
+  const rows = state.resourceFiles.length
+    ? state.resourceFiles.map(resourceRowMarkup).join("")
+    : '<tr><td colspan="7">No PDFs found. Put files into <code>ELN_vault/Resources/APT-FIM/PDFs</code>, then click Scan PDFs.</td></tr>';
+
+  formSections.innerHTML = `
+    <section class="form-section">
+      <h3>PDF Library</h3>
+      <p class="resource-help">Summaries are written into the vault so Obsidian can query them later.</p>
+
+      <div class="resource-grid">
+        <label class="field">
+          <span>Provider</span>
+          <select id="resource-provider">
+            <option value="ollama" ${state.resourceConfig.provider === "ollama" ? "selected" : ""}>Ollama</option>
+            <option value="lmstudio" ${state.resourceConfig.provider === "lmstudio" ? "selected" : ""}>LM Studio</option>
+            <option value="openai" ${state.resourceConfig.provider === "openai" ? "selected" : ""}>OpenAI</option>
+            <option value="anthropic" ${state.resourceConfig.provider === "anthropic" ? "selected" : ""}>Anthropic</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Base URL</span>
+          <input id="resource-base-url" type="text" placeholder="Optional custom API base URL" value="${escapeHtml(state.resourceConfig.baseUrl)}" />
+        </label>
+        <label class="field">
+          <span>Model</span>
+          <input id="resource-model" type="text" placeholder="Required for summaries and synthesis" value="${escapeHtml(state.resourceConfig.model)}" />
+        </label>
+        <label class="field">
+          <span>Embedding Model</span>
+          <input id="resource-embedding-model" type="text" placeholder="Optional unless embeddings are enabled" value="${escapeHtml(state.resourceConfig.embeddingModel)}" />
+        </label>
+        <label class="field field-wide">
+          <span>API Key</span>
+          <input id="resource-api-key" type="password" placeholder="Required for hosted providers" value="${escapeHtml(state.resourceConfig.apiKey)}" />
+        </label>
+      </div>
+
+      <label class="resource-checkbox-inline">
+        <input id="resource-generate-embeddings" type="checkbox" ${state.resourceConfig.generateEmbeddings ? "checked" : ""} />
+        Generate embeddings during ingest
+      </label>
+
+      <div class="resource-actions">
+        <button id="resource-scan" type="button" class="secondary-button">Scan PDFs</button>
+        <button id="resource-ingest" type="button" class="secondary-button">Ingest Selected</button>
+        <button id="resource-summarize" type="button" class="primary-button">Summarize Selected</button>
+      </div>
+
+      <div class="resource-table-wrap">
+        <table class="editable-table resource-table">
+          <thead>
+            <tr>
+              <th>Select</th>
+              <th>PDF</th>
+              <th>Indexed</th>
+              <th>Chunks</th>
+              <th>Summary Note</th>
+              <th>Embeddings</th>
+              <th>Modified</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <h3>Topic Synthesis</h3>
+      <div class="resource-grid">
+        <label class="field field-wide">
+          <span>Topic Title</span>
+          <input id="resource-topic-title" type="text" placeholder="Example: FIM image interpretation" />
+        </label>
+      </div>
+      <p class="resource-help">Use the selected PDFs' generated summary notes as synthesis sources.</p>
+      <div class="resource-actions">
+        <button id="resource-synthesize" type="button" class="primary-button">Synthesize Topic From Selected</button>
+      </div>
+    </section>
+  `;
+
+  document.querySelectorAll(".resource-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("change", (event) => {
+      state.selectedResourcePaths[event.target.dataset.resourcePath] = event.target.checked;
+    });
+  });
+
+  ["resource-provider", "resource-base-url", "resource-api-key", "resource-model", "resource-embedding-model", "resource-generate-embeddings"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", () => {
+      resourceConfigPayload();
+    });
+    document.getElementById(id)?.addEventListener("input", () => {
+      resourceConfigPayload();
+    });
+  });
+
+  document.getElementById("resource-scan")?.addEventListener("click", async () => {
+    try {
+      const response = await fetch("./api/resources/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        showMessage(data.error || "Could not scan PDFs.", "error");
+        return;
+      }
+      state.resourceFiles = data.files || data.status?.files || [];
+      syncResourceSelections();
+      renderResourcesPanel();
+      showMessage("Scanned the PDF library.", "success");
+    } catch (error) {
+      showMessage("Could not scan the PDF library.", "error");
+    }
+  });
+
+  document.getElementById("resource-ingest")?.addEventListener("click", () =>
+    runResourceAction("./api/resources/ingest", "Could not ingest selected PDFs.")
+  );
+  document.getElementById("resource-summarize")?.addEventListener("click", () =>
+    runResourceAction("./api/resources/summarize", "Could not summarize selected PDFs.")
+  );
+  document.getElementById("resource-synthesize")?.addEventListener("click", () =>
+    runResourceSynthesis()
+  );
+}
+
+async function runResourceAction(endpoint, defaultError) {
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resourceConfigPayload()),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      showMessage(data.error || defaultError, "error");
+      return;
+    }
+    if (data.status?.files) {
+      state.resourceFiles = data.status.files;
+      syncResourceSelections();
+      renderResourcesPanel();
+    }
+    showMessage(data.message || "Resource action completed.", "success");
+  } catch (error) {
+    showMessage(defaultError, "error");
+  }
+}
+
+async function runResourceSynthesis() {
+  const selected = state.resourceFiles.filter((file) => state.selectedResourcePaths[file.pdf_rel_path] && file.has_summary);
+  const payload = {
+    ...resourceConfigPayload(),
+    topicTitle: document.getElementById("resource-topic-title")?.value.trim() || "",
+    summaryNotes: selected.map((file) => file.summary_name),
+  };
+
+  try {
+    const response = await fetch("./api/resources/synthesize-topic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      showMessage(data.error || "Could not synthesize a topic note.", "error");
+      return;
+    }
+    if (data.status?.files) {
+      state.resourceFiles = data.status.files;
+      syncResourceSelections();
+      renderResourcesPanel();
+    }
+    showMessage(data.message || "Created topic synthesis note.", "success");
+  } catch (error) {
+    showMessage("Could not synthesize a topic note.", "error");
+  }
+}
+
 function renderForm(formKey) {
   state.activeForm = formKey;
   const config = formConfigs[formKey];
@@ -595,6 +862,22 @@ function renderForm(formKey) {
   formTitle.textContent = config.title;
   formDescription.textContent = config.description;
   formSections.innerHTML = "";
+
+  if (config.customRenderer === "resources") {
+    formActions.classList.add("hidden");
+    renderResourcesPanel();
+    fetchResourceFiles(false);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("form") !== formKey) {
+      params.set("form", formKey);
+      const nextUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState({}, "", nextUrl);
+    }
+    return;
+  }
+
+  formActions.classList.remove("hidden");
 
   for (const section of config.sections) {
     const sectionEl = document.createElement("section");

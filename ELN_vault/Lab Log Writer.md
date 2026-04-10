@@ -34,6 +34,7 @@ The local GUI writer is the preferred entry path for:
 - [[Tasks/My Tasks|Task Lists]]
 - [[Lists/Operations/Startup Checklists|Startup Checklists]]
 - [[Lists/Operations/Shutdown Checklists|Shutdown Checklists]]
+- [[Resources/APT-FIM/Library|APT/FIM Resources]]
 
 ## Start The Writer
 
@@ -64,6 +65,7 @@ The writer serves a local browser UI at `http://127.0.0.1:8765/`.
 - [Task List Writer](http://127.0.0.1:8765/?form=task-list)
 - [Startup Checklist Writer](http://127.0.0.1:8765/?form=startup-checklist)
 - [Shutdown Checklist Writer](http://127.0.0.1:8765/?form=shutdown-checklist)
+- [Resources Panel](http://127.0.0.1:8765/?form=resource-library)
 
 ## Notes
 
@@ -71,6 +73,7 @@ The writer serves a local browser UI at `http://127.0.0.1:8765/`.
 - The writer creates markdown notes directly in `ELN_vault`.
 - `Experiment Runs` and `Data Records` remain available only as legacy note flows.
 - Core note creation now routes through the local writer instead of Templater.
+- PDF summaries and topic syntheses are written into `Resources/APT-FIM`.
 
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_footer", {});

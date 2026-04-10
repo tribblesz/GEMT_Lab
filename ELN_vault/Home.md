@@ -131,6 +131,7 @@ LIMIT 20
 
 - [[Lists]]
 - [[Lab Log Writer]]
+- [[Resources/APT-FIM/Library|APT/FIM Resources]]
 - [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Lists/Experiment/Experiment Series|Experiment Series]]
 - [[Lists/Experiment/Experiment Logs|Experiment Logs]]

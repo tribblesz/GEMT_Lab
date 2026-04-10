@@ -31,6 +31,10 @@ folder:
   meetings: Meetings
   tasks: Tasks
   notes: Notes
+  resources apt fim pdfs: Resources/APT-FIM/PDFs
+  resources apt fim summaries: Resources/APT-FIM/Summaries
+  resources apt fim topics: Resources/APT-FIM/Topics
+  resources apt fim index: Resources/APT-FIM/.index
   templates: assets/templates
   custom templates: assets/templates/Custom Templates
   dataview queries: assets/templates/DataView Queries

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import textwrap
 import webbrowser
 from datetime import datetime, timedelta
@@ -9,6 +10,26 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+MODULE_ROOT = Path(__file__).resolve().parent
+if str(MODULE_ROOT) not in sys.path:
+    sys.path.insert(0, str(MODULE_ROOT))
+
+from resources import (
+    ensure_directories,
+    ingest_pdf,
+    pdf_index_key,
+    prepare_provider_config,
+    read_json,
+    render_pdf_summary_note,
+    render_topic_summary_note,
+    resolve_resource_paths,
+    scan_pdf_library,
+    summary_note_name,
+    synthesize_topic_summary,
+    summarize_pdf_chunks,
+    topic_note_name,
+)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -1248,6 +1269,163 @@ def get_options() -> dict[str, object]:
     }
 
 
+def rel_to_posix(path: Path) -> str:
+    return str(path).replace("\\", "/")
+
+
+def resource_settings_and_paths() -> tuple[dict[str, object], dict[str, Path]]:
+    settings = parse_settings()
+    paths = resolve_resource_paths(VAULT_ROOT, settings)
+    ensure_directories(paths)
+    return settings, paths
+
+
+def ensure_within(root: Path, relative_value: str) -> Path:
+    base = root.resolve()
+    candidate = (root / relative_value).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes resource folder: {relative_value}") from exc
+    return candidate
+
+
+def selected_pdf_paths(payload: dict[str, object], pdf_dir: Path) -> list[Path]:
+    requested = payload.get("pdfs") or []
+    if not requested:
+        return sorted(pdf_dir.rglob("*.pdf"))
+    return [ensure_within(pdf_dir, str(item)) for item in requested]
+
+
+def selected_summary_paths(payload: dict[str, object], summary_dir: Path) -> list[Path]:
+    requested = payload.get("summaryNotes") or []
+    return [ensure_within(summary_dir, str(item)) for item in requested]
+
+
+def note_body(markdown: str) -> str:
+    if markdown.startswith("---"):
+        parts = markdown.split("---", 2)
+        if len(parts) == 3:
+            return parts[2].strip()
+    return markdown.strip()
+
+
+def get_resource_status() -> dict[str, object]:
+    _, paths = resource_settings_and_paths()
+    files = scan_pdf_library(paths["pdfs"], paths["summaries"], paths["index"])
+    return {
+        "folders": {key: rel_to_posix(path.relative_to(VAULT_ROOT)) for key, path in paths.items()},
+        "counts": {
+            "pdfs": len(files),
+            "summaries": sum(1 for item in files if item["has_summary"]),
+            "indexed": sum(1 for item in files if item["has_index"]),
+            "embedded": sum(1 for item in files if item["has_embeddings"]),
+        },
+        "files": files,
+    }
+
+
+def run_resource_ingest(payload: dict[str, object]) -> dict[str, object]:
+    _, paths = resource_settings_and_paths()
+    pdf_paths = selected_pdf_paths(payload, paths["pdfs"])
+    generate_embeddings = bool(payload.get("generateEmbeddings"))
+    provider_config = prepare_provider_config(payload) if generate_embeddings else None
+
+    results = []
+    for pdf_path in pdf_paths:
+        indexed = ingest_pdf(pdf_path, paths["index"], generate_embeddings, provider_config)
+        results.append(
+            {
+                "pdf_name": pdf_path.name,
+                "chunk_count": indexed["chunk_count"],
+                "page_count": indexed["page_count"],
+            }
+        )
+
+    return {
+        "message": f"Ingested {len(results)} PDF(s).",
+        "results": results,
+        "status": get_resource_status(),
+    }
+
+
+def run_resource_summary(payload: dict[str, object]) -> dict[str, object]:
+    provider_config = prepare_provider_config(payload)
+    _, paths = resource_settings_and_paths()
+    pdf_paths = selected_pdf_paths(payload, paths["pdfs"])
+    results = []
+
+    for pdf_path in pdf_paths:
+        index_path = paths["index"] / f"{pdf_index_key(pdf_path)}.json"
+        if not index_path.exists():
+            ingest_pdf(pdf_path, paths["index"], False)
+        indexed = read_json(index_path, {})
+        if not indexed.get("chunks"):
+            raise ValueError(f"No extracted chunks available for {pdf_path.name}.")
+
+        summary_payload = summarize_pdf_chunks(pdf_path.stem, indexed["chunks"], provider_config)
+        note_path = paths["summaries"] / summary_note_name(pdf_path)
+        relative_pdf = rel_to_posix(pdf_path.relative_to(VAULT_ROOT))
+        content = render_pdf_summary_note(
+            pdf_title=pdf_path.stem,
+            pdf_rel_path=relative_pdf,
+            provider_label=provider_config["provider"],
+            model_name=provider_config["model"],
+            summary_text=summary_payload["summary_text"],
+            citations=summary_payload["citations"],
+        )
+        write_file(note_path, content)
+        results.append(
+            {
+                "pdf_name": pdf_path.name,
+                "summary_name": note_path.name,
+                "summary_path": rel_to_posix(note_path.relative_to(VAULT_ROOT)),
+            }
+        )
+
+    return {
+        "message": f"Summarized {len(results)} PDF(s).",
+        "results": results,
+        "status": get_resource_status(),
+    }
+
+
+def run_topic_synthesis(payload: dict[str, object]) -> dict[str, object]:
+    provider_config = prepare_provider_config(payload)
+    topic_title = str(payload.get("topicTitle", "")).strip() or "APT FIM Topic Summary"
+    _, paths = resource_settings_and_paths()
+    summary_paths = selected_summary_paths(payload, paths["summaries"])
+    if not summary_paths:
+        raise ValueError("Select at least one summary note to synthesize.")
+
+    source_payloads = []
+    for summary_path in summary_paths:
+        markdown = read_file(summary_path)
+        source_payloads.append(
+            {
+                "title": summary_path.stem,
+                "summary": note_body(markdown),
+                "summary_rel_path": rel_to_posix(summary_path.relative_to(VAULT_ROOT)),
+            }
+        )
+
+    synthesized = synthesize_topic_summary(topic_title, source_payloads, provider_config)
+    note_path = paths["topics"] / topic_note_name(topic_title)
+    content = render_topic_summary_note(
+        topic_title=topic_title,
+        topic_summary=synthesized,
+        sources=source_payloads,
+        provider_name=provider_config["provider"],
+        model_name=provider_config["model"],
+    )
+    write_file(note_path, content)
+    return {
+        "message": f"Created topic summary {note_path.name}.",
+        "topic_path": rel_to_posix(note_path.relative_to(VAULT_ROOT)),
+        "status": get_resource_status(),
+    }
+
+
 class LabLogRequestHandler(BaseHTTPRequestHandler):
     def _send(self, status: int, content: bytes, content_type: str) -> None:
         self.send_response(status)
@@ -1276,21 +1454,74 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/health":
             self._send(HTTPStatus.OK, b'{"status":"ok"}', "application/json; charset=utf-8")
             return
+        if path == "/api/resources/status":
+            payload = json.dumps(get_resource_status()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
+        if path == "/api/resources/files":
+            payload = json.dumps(get_resource_status()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
 
         self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path != "/api/create":
-            self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
-            return
-
         content_length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(content_length)
         try:
             payload = json.loads(raw.decode("utf-8"))
         except json.JSONDecodeError:
             self._send(HTTPStatus.BAD_REQUEST, b'{"error":"Invalid JSON"}', "application/json; charset=utf-8")
+            return
+
+        if parsed.path == "/api/resources/scan":
+            try:
+                response = get_resource_status()
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/ingest":
+            try:
+                response = run_resource_ingest(payload)
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/summarize":
+            try:
+                response = run_resource_summary(payload)
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/synthesize-topic":
+            try:
+                response = run_topic_synthesis(payload)
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+
+        if parsed.path != "/api/create":
+            self._send(HTTPStatus.NOT_FOUND, b"Not Found", "text/plain; charset=utf-8")
             return
 
         form_type = str(payload.get("formType", "")).strip()
