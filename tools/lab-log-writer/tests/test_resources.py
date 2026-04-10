@@ -131,6 +131,23 @@ class ResourcesTests(unittest.TestCase):
         item = {"has_summary": True, "has_embeddings": True}
         self.assertTrue(resources.is_processing_complete(item, require_embeddings=True))
 
+    def test_should_skip_intake_scan_item_uses_durable_status_when_present(self):
+        resources = load_resources_module()
+        stale_summary = {"has_summary": True, "has_embeddings": True, "index_status": "failed"}
+        self.assertFalse(resources.should_skip_intake_scan_item(stale_summary, require_embeddings=False))
+        self.assertFalse(resources.should_skip_intake_scan_item(stale_summary, require_embeddings=True))
+
+        processing = {"has_summary": True, "has_embeddings": False, "index_status": "processing"}
+        self.assertFalse(resources.should_skip_intake_scan_item(processing, require_embeddings=True))
+
+        done = {"has_summary": False, "has_embeddings": False, "index_status": "done"}
+        self.assertTrue(resources.should_skip_intake_scan_item(done, require_embeddings=False))
+        self.assertTrue(resources.should_skip_intake_scan_item(done, require_embeddings=True))
+
+        no_status = {"has_summary": True, "has_embeddings": False, "index_status": None}
+        self.assertTrue(resources.should_skip_intake_scan_item(no_status, require_embeddings=False))
+        self.assertFalse(resources.should_skip_intake_scan_item(no_status, require_embeddings=True))
+
     def test_update_processing_state_persists_status_fields(self):
         resources = load_resources_module()
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -402,6 +419,321 @@ class ResourcesTests(unittest.TestCase):
             self.assertEqual(batch["failed"], 0)
             self.assertTrue(done_pdf.is_file())
             self.assertTrue((pdf_dir / "Processed" / "StillPending.pdf").is_file())
+
+    def test_process_intake_library_retries_stale_summary_when_index_status_failed(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            resources.ensure_resource_subdirectories(pdf_dir)
+            intake = pdf_dir / "StaleSummary.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            (summary_dir / "StaleSummary.md").write_text("# stale\n", encoding="utf-8")
+            key = resources.pdf_index_key(intake)
+            resources.write_json(
+                index_dir / f"{key}.json",
+                {"status": "failed", "error_message": "prior run", "chunks": []},
+            )
+            config = resources.prepare_provider_config(
+                {"provider": "ollama", "baseUrl": "", "model": "llama3.1", "embeddingModel": ""}
+            )
+            fake_pages = [{"page": 1, "text": "Retry body."}]
+
+            with patch.object(resources, "extract_pdf_pages", return_value=fake_pages), patch.object(
+                resources,
+                "summarize_pdf_chunks",
+                return_value={"summary_text": "## Overview\nRetried OK", "citations": []},
+            ):
+                batch = resources.process_intake_library(
+                    vault,
+                    pdf_dir=pdf_dir,
+                    summary_dir=summary_dir,
+                    index_dir=index_dir,
+                    config=config,
+                    generate_embeddings=False,
+                )
+
+            self.assertEqual(batch["processed"], 1, msg="failed durable status must not skip despite stale summary")
+            self.assertEqual(batch["succeeded"], 1)
+            self.assertTrue((pdf_dir / "Processed" / "StaleSummary.pdf").is_file())
+
+    def test_scan_intake_resolves_failed_index_by_content_hash_when_path_key_differs(self):
+        """After Failed→intake retry, index file name uses old path hash; scan must still see durable status."""
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            pdf_dir = root / "PDFs"
+            summary_dir = root / "Summaries"
+            index_dir = root / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            resources.ensure_resource_subdirectories(pdf_dir)
+            intake = pdf_dir / "RequeueSameName.pdf"
+            intake.write_bytes(b"%PDF-1.4\nrequeue-bytes\n")
+            (summary_dir / "RequeueSameName.md").write_text("# stale summary\n", encoding="utf-8")
+            failed_path = pdf_dir / "Failed" / "RequeueSameName.pdf"
+            failed_key = resources.pdf_index_key(failed_path)
+            intake_key = resources.pdf_index_key(intake)
+            self.assertNotEqual(
+                failed_key,
+                intake_key,
+                "fixture requires distinct keys so direct path lookup misses the durable index",
+            )
+            resources.write_json(
+                index_dir / f"{failed_key}.json",
+                {
+                    "status": "failed",
+                    "error_message": "prior failure",
+                    "hash": resources.file_sha256(intake),
+                    "chunks": [],
+                },
+            )
+            scanned = resources.scan_intake_pdf_library(pdf_dir, summary_dir, index_dir)
+            self.assertEqual(len(scanned), 1)
+            item = scanned[0]
+            self.assertEqual(item["index_status"], "failed")
+            self.assertTrue(item["has_summary"])
+            self.assertFalse(
+                resources.should_skip_intake_scan_item(item, require_embeddings=False),
+                "stale summary must not skip when durable failed status is recovered via hash",
+            )
+
+    def test_process_intake_library_retries_requeued_pdf_when_index_key_is_failed_path_with_stale_summary(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            resources.ensure_resource_subdirectories(pdf_dir)
+            intake = pdf_dir / "RequeueBatch.pdf"
+            intake.write_bytes(b"%PDF-1.4\nbatch-requeue\n")
+            (summary_dir / "RequeueBatch.md").write_text("# stale\n", encoding="utf-8")
+            failed_path = pdf_dir / "Failed" / "RequeueBatch.pdf"
+            failed_key = resources.pdf_index_key(failed_path)
+            resources.write_json(
+                index_dir / f"{failed_key}.json",
+                {
+                    "status": "failed",
+                    "error_message": "moved to failed earlier",
+                    "hash": resources.file_sha256(intake),
+                    "chunks": [],
+                },
+            )
+            config = resources.prepare_provider_config(
+                {"provider": "ollama", "baseUrl": "", "model": "llama3.1", "embeddingModel": ""}
+            )
+            fake_pages = [{"page": 1, "text": "Requeued body."}]
+
+            with patch.object(resources, "extract_pdf_pages", return_value=fake_pages), patch.object(
+                resources,
+                "summarize_pdf_chunks",
+                return_value={"summary_text": "## Overview\nRequeue OK", "citations": []},
+            ):
+                batch = resources.process_intake_library(
+                    vault,
+                    pdf_dir=pdf_dir,
+                    summary_dir=summary_dir,
+                    index_dir=index_dir,
+                    config=config,
+                    generate_embeddings=False,
+                )
+
+            self.assertEqual(
+                batch["processed"],
+                1,
+                msg="re-queued intake PDF must run despite stale summary and mismatched index filename",
+            )
+            self.assertEqual(batch["succeeded"], 1)
+            self.assertTrue((pdf_dir / "Processed" / "RequeueBatch.pdf").is_file())
+
+    def test_process_intake_library_retries_stale_summary_when_index_status_processing(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            resources.ensure_resource_subdirectories(pdf_dir)
+            intake = pdf_dir / "OrphanProcessing.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            (summary_dir / "OrphanProcessing.md").write_text("# stale\n", encoding="utf-8")
+            key = resources.pdf_index_key(intake)
+            resources.write_json(
+                index_dir / f"{key}.json",
+                {"status": "processing", "processing_started_at": "2026-01-01 00:00", "chunks": []},
+            )
+            config = resources.prepare_provider_config(
+                {"provider": "ollama", "baseUrl": "", "model": "llama3.1", "embeddingModel": ""}
+            )
+            fake_pages = [{"page": 1, "text": "Resume body."}]
+
+            with patch.object(resources, "extract_pdf_pages", return_value=fake_pages), patch.object(
+                resources,
+                "summarize_pdf_chunks",
+                return_value={"summary_text": "## Overview\nResumed OK", "citations": []},
+            ):
+                batch = resources.process_intake_library(
+                    vault,
+                    pdf_dir=pdf_dir,
+                    summary_dir=summary_dir,
+                    index_dir=index_dir,
+                    config=config,
+                    generate_embeddings=False,
+                )
+
+            self.assertEqual(batch["processed"], 1, msg="processing durable status must not skip despite stale summary")
+            self.assertEqual(batch["succeeded"], 1)
+            self.assertTrue((pdf_dir / "Processed" / "OrphanProcessing.pdf").is_file())
+
+    def test_process_intake_library_rejects_openai_without_api_key_before_pdf_mutation(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            intake = pdf_dir / "ConfigBad.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            config = resources.prepare_provider_config(
+                {
+                    "provider": "openai",
+                    "baseUrl": "https://api.openai.com/v1",
+                    "model": "gpt-4.1-mini",
+                    "apiKey": "",
+                    "embeddingModel": "",
+                }
+            )
+            with patch.object(resources, "extract_pdf_pages") as mock_extract:
+                with self.assertRaises(ValueError) as ctx:
+                    resources.process_intake_library(
+                        vault,
+                        pdf_dir=pdf_dir,
+                        summary_dir=summary_dir,
+                        index_dir=index_dir,
+                        config=config,
+                        generate_embeddings=False,
+                    )
+                mock_extract.assert_not_called()
+            self.assertIn("API key", str(ctx.exception))
+            self.assertTrue(intake.is_file(), "intake PDF must not be moved when config is invalid")
+            self.assertFalse((pdf_dir / "Failed" / "ConfigBad.pdf").exists())
+
+    def test_process_intake_library_rejects_empty_text_model_before_pdf_mutation(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            intake = pdf_dir / "NoModel.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            config = resources.prepare_provider_config(
+                {
+                    "provider": "ollama",
+                    "baseUrl": "",
+                    "model": "",
+                    "embeddingModel": "",
+                }
+            )
+            with patch.object(resources, "extract_pdf_pages") as mock_extract:
+                with self.assertRaises(ValueError):
+                    resources.process_intake_library(
+                        vault,
+                        pdf_dir=pdf_dir,
+                        summary_dir=summary_dir,
+                        index_dir=index_dir,
+                        config=config,
+                        generate_embeddings=False,
+                    )
+                mock_extract.assert_not_called()
+            self.assertTrue(intake.is_file())
+
+    def test_process_intake_library_rejects_embeddings_without_embedding_model_before_pdf_mutation(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            intake = pdf_dir / "NoEmbedModel.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            config = resources.prepare_provider_config(
+                {
+                    "provider": "ollama",
+                    "baseUrl": "",
+                    "model": "llama3.1",
+                    "embeddingModel": "",
+                }
+            )
+            with patch.object(resources, "extract_pdf_pages") as mock_extract:
+                with self.assertRaises(ValueError) as ctx:
+                    resources.process_intake_library(
+                        vault,
+                        pdf_dir=pdf_dir,
+                        summary_dir=summary_dir,
+                        index_dir=index_dir,
+                        config=config,
+                        generate_embeddings=True,
+                    )
+                mock_extract.assert_not_called()
+            self.assertIn("embedding", str(ctx.exception).lower())
+            self.assertTrue(intake.is_file())
+
+    def test_process_intake_library_rejects_anthropic_embeddings_before_pdf_mutation(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vault = Path(temp_dir)
+            pdf_dir = vault / "Resources" / "APT-FIM" / "PDFs"
+            summary_dir = vault / "Resources" / "APT-FIM" / "Summaries"
+            index_dir = vault / "Resources" / "APT-FIM" / ".index"
+            pdf_dir.mkdir(parents=True)
+            summary_dir.mkdir(parents=True)
+            index_dir.mkdir(parents=True)
+            intake = pdf_dir / "AnthropicEmbed.pdf"
+            intake.write_bytes(b"%PDF-1.4\n")
+            config = resources.prepare_provider_config(
+                {
+                    "provider": "anthropic",
+                    "baseUrl": "",
+                    "model": "claude-3-5-sonnet-latest",
+                    "apiKey": "sk-ant-test",
+                    "embeddingModel": "any",
+                }
+            )
+            with patch.object(resources, "extract_pdf_pages") as mock_extract:
+                with self.assertRaises(ValueError):
+                    resources.process_intake_library(
+                        vault,
+                        pdf_dir=pdf_dir,
+                        summary_dir=summary_dir,
+                        index_dir=index_dir,
+                        config=config,
+                        generate_embeddings=True,
+                    )
+                mock_extract.assert_not_called()
+            self.assertTrue(intake.is_file())
 
 
 if __name__ == "__main__":

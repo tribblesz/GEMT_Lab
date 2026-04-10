@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Home.md",
+                "file": "Lists/Experiment/Experiment Series.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Home"
+              "title": "Experiment Series"
             }
           }
         ],
@@ -215,10 +215,10 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Home.md"
+                "file": "Lists/Experiment/Experiment Series.md"
               },
               "icon": "lucide-info",
-              "title": "File properties for Home"
+              "title": "File properties for Experiment Series"
             }
           }
         ],
@@ -246,6 +246,7 @@
   },
   "active": "b9fec1ee43b1073a",
   "lastOpenFiles": [
+    "Home.md",
     "Lists/Operations/Daily Notes.md",
     "Resources/APT-FIM/PDFs/atomic-scale-phase-composition-through-multivariate-statistical-analysis-of-atom-probe-tomography-data.pdf",
     "Resources/APT-FIM/PDFs/Failed",
@@ -284,7 +285,6 @@
     "Notes/H & P Statements.md",
     "Notes/Miscellaneous/Databases for Research.md",
     "Tasks/My Tasks.md",
-    "Home.md",
     "Lists/Operations/Instrument Configurations.md",
     "Lists/Experiment/Specimens.md",
     "Resources/Instruments/ZEISS - Merlin/Documents/ZEISS_MERLIN_FE-SEM.jpg",

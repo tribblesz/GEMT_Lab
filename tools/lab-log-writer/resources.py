@@ -228,6 +228,72 @@ def pdf_index_key(pdf_path: Path) -> str:
     return f"{stem}-{suffix}"
 
 
+def _index_status_priority_for_scan_resolution(status: str | None) -> int:
+    """Higher is preferred when multiple index JSON files match the same PDF content hash."""
+    if status is None:
+        return 0
+    s = str(status).strip().lower()
+    if s == "failed":
+        return 3
+    if s == "processing":
+        return 2
+    if s == "done":
+        return 1
+    return 0
+
+
+def _resolve_index_paths_for_scan(
+    pdf_path: Path,
+    index_dir: Path,
+) -> tuple[Path, Path, dict[str, Any]]:
+    """Resolve index and embeddings paths, and loaded index payload.
+
+    The path-based key can change when a PDF is moved (e.g. Failed → intake retry).
+    If the direct key file is missing, fall back to an index JSON in the same stem
+    family whose stored content hash matches the file on disk.
+    """
+    pdf_path = Path(pdf_path)
+    index_dir = Path(index_dir)
+    direct_key = pdf_index_key(pdf_path)
+    direct_index = index_dir / f"{direct_key}.json"
+    if direct_index.is_file():
+        cached = read_json(direct_index, {})
+        emb = index_dir / f"{direct_key}.embeddings.json"
+        return direct_index, emb, cached
+
+    stem_slug = slugify(pdf_path.stem).lower()
+    try:
+        content_hash = file_sha256(pdf_path)
+    except OSError:
+        content_hash = ""
+
+    best_path: Path | None = None
+    best_cached: dict[str, Any] = {}
+    best_pri = -1
+    best_mtime = 0.0
+
+    for candidate in sorted(index_dir.glob(f"{stem_slug}-*.json")):
+        name = candidate.name
+        if name.endswith(".embeddings.json"):
+            continue
+        cached = read_json(candidate, {})
+        if not content_hash or cached.get("hash") != content_hash:
+            continue
+        pri = _index_status_priority_for_scan_resolution(cached.get("status"))
+        mtime = candidate.stat().st_mtime
+        if pri > best_pri or (pri == best_pri and mtime >= best_mtime):
+            best_pri = pri
+            best_mtime = mtime
+            best_path = candidate
+            best_cached = cached
+
+    if best_path is not None:
+        key = Path(best_path.name).stem
+        return best_path, index_dir / f"{key}.embeddings.json", best_cached
+
+    return direct_index, index_dir / f"{direct_key}.embeddings.json", {}
+
+
 def summary_note_name(pdf_path: Path) -> str:
     return f"{sanitize_file_name(pdf_path.stem)}.md"
 
@@ -252,6 +318,14 @@ def is_processing_complete(item: dict[str, Any], require_embeddings: bool) -> bo
     return bool(item.get("has_embeddings"))
 
 
+def should_skip_intake_scan_item(item: dict[str, Any], require_embeddings: bool) -> bool:
+    """Skip intake processing only when durable index status is done; otherwise fall back to on-disk summary/embeddings."""
+    raw_status = item.get("index_status")
+    if raw_status is not None:
+        return str(raw_status).strip().lower() == "done"
+    return is_processing_complete(item, require_embeddings)
+
+
 def _scan_pdf_paths(
     pdf_paths: list[Path],
     pdf_dir: Path,
@@ -267,15 +341,15 @@ def _scan_pdf_paths(
         has_index = False
         has_embeddings = False
         chunk_count = 0
+        index_status: str | None = None
         if index_dir is not None:
-            key = pdf_index_key(pdf_path)
-            index_path = index_dir / f"{key}.json"
-            embeddings_path = index_dir / f"{key}.embeddings.json"
-            has_index = index_path.exists()
-            has_embeddings = embeddings_path.exists()
+            index_path, embeddings_path, cached = _resolve_index_paths_for_scan(pdf_path, index_dir)
+            has_index = index_path.is_file()
+            has_embeddings = embeddings_path.is_file()
             if has_index:
-                cached = read_json(index_path, {})
                 chunk_count = len(cached.get("chunks", []))
+                if "status" in cached:
+                    index_status = str(cached.get("status", "")).strip() or None
 
         items.append(
             {
@@ -288,6 +362,7 @@ def _scan_pdf_paths(
                 "has_index": has_index,
                 "has_embeddings": has_embeddings,
                 "chunk_count": chunk_count,
+                "index_status": index_status,
                 "modified_at": datetime.fromtimestamp(pdf_path.stat().st_mtime).isoformat(timespec="seconds"),
                 "size_bytes": pdf_path.stat().st_size,
             }
@@ -415,6 +490,27 @@ def prepare_provider_config(payload: dict[str, Any]) -> dict[str, str]:
         raise ValueError(f"Unsupported provider: {provider}")
 
     return config
+
+
+def validate_provider_config_for_intake(config: dict[str, str], *, generate_embeddings: bool) -> None:
+    """Raise ValueError if config cannot satisfy intake processing (summarize + optional embeddings).
+
+    Call before any per-PDF intake work so batch-level misconfiguration does not move PDFs to Failed.
+    """
+    if not (config.get("model") or "").strip():
+        raise ValueError("A text model is required.")
+
+    provider = (config.get("provider") or "").strip().lower()
+    if provider == "openai" and not (config.get("api_key") or "").strip():
+        raise ValueError("An OpenAI API key is required.")
+    if provider == "anthropic" and not (config.get("api_key") or "").strip():
+        raise ValueError("An Anthropic API key is required.")
+
+    if generate_embeddings:
+        if not (config.get("embedding_model") or "").strip():
+            raise ValueError("An embedding model is required when embeddings are enabled.")
+        if provider == "anthropic":
+            raise ValueError("Embeddings are not supported for provider: anthropic")
 
 
 def provider_label(config: dict[str, str]) -> str:
@@ -719,6 +815,8 @@ def process_intake_pdf(
     if source_pdf.parent.resolve() != pdf_dir.resolve():
         raise ValueError("Intake processing only supports PDFs in the top-level intake folder.")
 
+    validate_provider_config_for_intake(config, generate_embeddings=generate_embeddings)
+
     ensure_resource_subdirectories(pdf_dir)
     index_path_intake = index_dir / f"{pdf_index_key(source_pdf)}.json"
     current_path = source_pdf
@@ -834,11 +932,12 @@ def process_intake_library(
     config: dict[str, str],
     generate_embeddings: bool = False,
 ) -> dict[str, Any]:
+    validate_provider_config_for_intake(config, generate_embeddings=generate_embeddings)
     ensure_resource_subdirectories(Path(pdf_dir))
     items = scan_intake_pdf_library(Path(pdf_dir), Path(summary_dir), Path(index_dir))
     results: list[dict[str, Any]] = []
     for item in items:
-        if is_processing_complete(item, generate_embeddings):
+        if should_skip_intake_scan_item(item, generate_embeddings):
             continue
         results.append(
             process_intake_pdf(
