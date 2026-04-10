@@ -119,6 +119,8 @@ tags:
 
 # Resources
 
+New APT/FIM PDFs: put them in `Resources/APT-FIM/PDFs`, open the [[Lab Log Writer|Lab Log Writer]] [Resources panel](http://127.0.0.1:8765/?form=resource-library), then **Scan Intake Folder** and **Process Intake Folder**. Details: [[Resources/APT-FIM/Library|APT/FIM Resources]].
+
 - ### [[Resources/APT-FIM/Library|APT/FIM Resources]]
   ```dataview
   TABLE WITHOUT ID

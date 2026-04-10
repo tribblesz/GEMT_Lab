@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -109,6 +110,100 @@ def ensure_directories(paths: dict[str, Path]) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
+def processed_pdf_dir(pdf_dir: Path) -> Path:
+    return pdf_dir / "Processed"
+
+
+def failed_pdf_dir(pdf_dir: Path) -> Path:
+    return pdf_dir / "Failed"
+
+
+def ensure_resource_subdirectories(pdf_dir: Path) -> None:
+    processed_pdf_dir(pdf_dir).mkdir(parents=True, exist_ok=True)
+    failed_pdf_dir(pdf_dir).mkdir(parents=True, exist_ok=True)
+
+
+def unique_destination_path(directory: Path, file_name: str) -> Path:
+    directory = Path(directory)
+    base_name = Path(file_name).name
+    candidate = directory / base_name
+    if not candidate.exists():
+        return candidate
+    stem = Path(base_name).stem
+    suffix = Path(base_name).suffix
+    n = 1
+    while True:
+        candidate = directory / f"{stem} ({n}){suffix}"
+        if not candidate.exists():
+            return candidate
+        n += 1
+
+
+def move_pdf_to_bucket(source: Path, destination_dir: Path) -> Path:
+    source = Path(source)
+    destination_dir = Path(destination_dir)
+    if not source.is_file():
+        raise ValueError(f"Source PDF does not exist or is not a file: {source}")
+    if source.suffix.lower() != ".pdf":
+        raise ValueError(f"Source must be a PDF file: {source}")
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    dest = unique_destination_path(destination_dir, source.name)
+    shutil.move(str(source), str(dest))
+    return dest
+
+
+def update_processing_state(index_path: Path, *, status: str, **fields: Any) -> dict[str, Any]:
+    payload = read_json(index_path, {})
+    payload["status"] = status
+    if status == "processing":
+        payload["processing_started_at"] = current_timestamp()
+        payload["error_message"] = ""
+    if status in {"done", "failed"}:
+        payload["processing_finished_at"] = current_timestamp()
+    payload.update(fields)
+    write_json(index_path, payload)
+    return payload
+
+
+def vault_relative_path(absolute_path: Path, vault_root: Path) -> str:
+    return str(Path(absolute_path).resolve().relative_to(Path(vault_root).resolve())).replace("\\", "/")
+
+
+def rekey_resource_index_files(index_dir: Path, old_pdf_path: Path, new_pdf_path: Path) -> None:
+    index_dir = Path(index_dir)
+    old_key = pdf_index_key(Path(old_pdf_path))
+    new_key = pdf_index_key(Path(new_pdf_path))
+    if old_key == new_key:
+        return
+    for src_name in (f"{old_key}.json", f"{old_key}.embeddings.json"):
+        src = index_dir / src_name
+        if not src.is_file():
+            continue
+        dest_name = src_name.replace(old_key, new_key, 1)
+        dest = index_dir / dest_name
+        if dest.is_file():
+            dest.unlink()
+        src.rename(dest)
+
+
+def _restore_processing_after_ingest(
+    index_path: Path,
+    *,
+    processing_started_at: str,
+    original_pdf_rel_path: str,
+    current_pdf_rel_path: str,
+    summary_path: str,
+) -> None:
+    data = read_json(index_path, {})
+    data["status"] = "processing"
+    data["processing_started_at"] = processing_started_at
+    data["original_pdf_rel_path"] = original_pdf_rel_path
+    data["current_pdf_rel_path"] = current_pdf_rel_path
+    data["summary_path"] = summary_path
+    data["error_message"] = ""
+    write_json(index_path, data)
+
+
 def resolve_resource_paths(vault_root: Path, settings: dict[str, object]) -> dict[str, Path]:
     folders = settings.get("folders", {})
     return {
@@ -149,12 +244,22 @@ def unsummarized_pdf_rel_paths(files: list[dict[str, Any]]) -> list[str]:
     return [str(item.get("pdf_rel_path", "")).strip() for item in files if item.get("pdf_rel_path") and not item.get("has_summary")]
 
 
-def scan_pdf_library(pdf_dir: Path, summary_dir: Path, index_dir: Path | None = None) -> list[dict[str, Any]]:
-    items: list[dict[str, Any]] = []
-    if not pdf_dir.exists():
-        return items
+def is_processing_complete(item: dict[str, Any], require_embeddings: bool) -> bool:
+    if not item.get("has_summary"):
+        return False
+    if not require_embeddings:
+        return True
+    return bool(item.get("has_embeddings"))
 
-    for pdf_path in sorted(pdf_dir.rglob("*.pdf")):
+
+def _scan_pdf_paths(
+    pdf_paths: list[Path],
+    pdf_dir: Path,
+    summary_dir: Path,
+    index_dir: Path | None = None,
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for pdf_path in pdf_paths:
         summary_name = summary_note_name(pdf_path)
         summary_path = summary_dir / summary_name
         index_path = None
@@ -189,6 +294,18 @@ def scan_pdf_library(pdf_dir: Path, summary_dir: Path, index_dir: Path | None = 
         )
 
     return items
+
+
+def scan_pdf_library(pdf_dir: Path, summary_dir: Path, index_dir: Path | None = None) -> list[dict[str, Any]]:
+    if not pdf_dir.exists():
+        return []
+    return _scan_pdf_paths(sorted(pdf_dir.rglob("*.pdf")), pdf_dir, summary_dir, index_dir)
+
+
+def scan_intake_pdf_library(pdf_dir: Path, summary_dir: Path, index_dir: Path | None = None) -> list[dict[str, Any]]:
+    if not pdf_dir.exists():
+        return []
+    return _scan_pdf_paths(sorted(pdf_dir.glob("*.pdf")), pdf_dir, summary_dir, index_dir)
 
 
 def extract_pdf_pages(pdf_path: Path) -> list[dict[str, Any]]:
@@ -581,3 +698,163 @@ def ingest_pdf(
         embeddings_path.unlink()
 
     return payload
+
+
+def process_intake_pdf(
+    vault_root: Path,
+    pdf_path: Path,
+    *,
+    pdf_dir: Path,
+    summary_dir: Path,
+    index_dir: Path,
+    config: dict[str, str],
+    generate_embeddings: bool = False,
+) -> dict[str, Any]:
+    vault_root = Path(vault_root).resolve()
+    source_pdf = Path(pdf_path).resolve()
+    pdf_dir = Path(pdf_dir).resolve()
+    summary_dir = Path(summary_dir).resolve()
+    index_dir = Path(index_dir).resolve()
+
+    if source_pdf.parent.resolve() != pdf_dir.resolve():
+        raise ValueError("Intake processing only supports PDFs in the top-level intake folder.")
+
+    ensure_resource_subdirectories(pdf_dir)
+    index_path_intake = index_dir / f"{pdf_index_key(source_pdf)}.json"
+    current_path = source_pdf
+    orig_rel = vault_relative_path(source_pdf, vault_root)
+    planned_summary = summary_dir / summary_note_name(source_pdf)
+
+    try:
+        started = update_processing_state(
+            index_path_intake,
+            status="processing",
+            original_pdf_rel_path=orig_rel,
+            current_pdf_rel_path=orig_rel,
+            summary_path=str(planned_summary),
+        )
+        started_at = started["processing_started_at"]
+
+        ingest_pdf(source_pdf, index_dir, generate_embeddings, config if generate_embeddings else None)
+        _restore_processing_after_ingest(
+            index_path_intake,
+            processing_started_at=started_at,
+            original_pdf_rel_path=orig_rel,
+            current_pdf_rel_path=orig_rel,
+            summary_path=str(planned_summary),
+        )
+
+        payload = read_json(index_path_intake, {})
+        chunks = payload.get("chunks") or []
+        summary_result = summarize_pdf_chunks(source_pdf.name, chunks, config)
+
+        current_path = move_pdf_to_bucket(current_path, processed_pdf_dir(pdf_dir))
+        rekey_resource_index_files(index_dir, source_pdf, current_path)
+
+        final_path = current_path
+        final_rel = vault_relative_path(final_path, vault_root)
+        summary_file = summary_dir / summary_note_name(final_path)
+        note_body = render_pdf_summary_note(
+            pdf_title=sanitize_file_name(final_path.stem),
+            pdf_rel_path=final_rel,
+            provider_label=provider_label(config),
+            model_name=config["model"],
+            summary_text=summary_result["summary_text"],
+            citations=summary_result["citations"],
+        )
+        summary_file.parent.mkdir(parents=True, exist_ok=True)
+        summary_file.write_text(note_body, encoding="utf-8")
+
+        new_index = index_dir / f"{pdf_index_key(final_path)}.json"
+        embeddings_ok = not generate_embeddings or (index_dir / f"{pdf_index_key(final_path)}.embeddings.json").is_file()
+        completion_item = {
+            "has_summary": summary_file.is_file(),
+            "has_embeddings": embeddings_ok if generate_embeddings else False,
+        }
+        if not is_processing_complete(completion_item, generate_embeddings):
+            raise RuntimeError("Processing finished but completion criteria were not met.")
+
+        update_processing_state(
+            new_index,
+            status="done",
+            current_pdf_rel_path=final_rel,
+            summary_path=str(summary_file),
+            embeddings_generated=bool(generate_embeddings),
+        )
+
+        return {"success": True, "pdf_path": str(final_path), "error": ""}
+
+    except Exception as exc:
+        err = str(exc)
+        failed_bucket = failed_pdf_dir(pdf_dir)
+        report_path = current_path
+        try:
+            if current_path.exists() and current_path.parent.resolve() != failed_bucket.resolve():
+                pre_move = current_path
+                failed_dest = move_pdf_to_bucket(current_path, failed_bucket)
+                report_path = failed_dest
+                rekey_resource_index_files(index_dir, pre_move, failed_dest)
+                update_processing_state(
+                    index_dir / f"{pdf_index_key(failed_dest)}.json",
+                    status="failed",
+                    error_message=err,
+                    current_pdf_rel_path=vault_relative_path(failed_dest, vault_root),
+                )
+            elif index_path_intake.exists():
+                update_processing_state(
+                    index_path_intake,
+                    status="failed",
+                    error_message=err,
+                    current_pdf_rel_path=vault_relative_path(current_path, vault_root)
+                    if current_path.exists()
+                    else vault_relative_path(source_pdf, vault_root),
+                )
+        except Exception as cleanup_exc:
+            if index_path_intake.exists():
+                update_processing_state(
+                    index_path_intake,
+                    status="failed",
+                    error_message=f"{err}; cleanup error: {cleanup_exc}",
+                    current_pdf_rel_path=vault_relative_path(source_pdf, vault_root),
+                )
+        return {
+            "success": False,
+            "status": "failed",
+            "pdf_path": str(report_path.resolve()),
+            "error": err,
+        }
+
+
+def process_intake_library(
+    vault_root: Path,
+    *,
+    pdf_dir: Path,
+    summary_dir: Path,
+    index_dir: Path,
+    config: dict[str, str],
+    generate_embeddings: bool = False,
+) -> dict[str, Any]:
+    ensure_resource_subdirectories(Path(pdf_dir))
+    items = scan_intake_pdf_library(Path(pdf_dir), Path(summary_dir), Path(index_dir))
+    results: list[dict[str, Any]] = []
+    for item in items:
+        if is_processing_complete(item, generate_embeddings):
+            continue
+        results.append(
+            process_intake_pdf(
+                vault_root,
+                Path(item["pdf_path"]),
+                pdf_dir=Path(pdf_dir),
+                summary_dir=Path(summary_dir),
+                index_dir=Path(index_dir),
+                config=config,
+                generate_embeddings=generate_embeddings,
+            )
+        )
+    succeeded = sum(1 for entry in results if entry.get("success"))
+    return {
+        "processed": len(results),
+        "succeeded": succeeded,
+        "failed": len(results) - succeeded,
+        "results": results,
+    }

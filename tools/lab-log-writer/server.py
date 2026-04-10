@@ -18,13 +18,19 @@ if str(MODULE_ROOT) not in sys.path:
 from resources import (
     build_provider_presets,
     ensure_directories,
+    ensure_resource_subdirectories,
+    failed_pdf_dir,
     ingest_pdf,
+    is_processing_complete,
     pdf_index_key,
     prepare_provider_config,
+    process_intake_library,
+    processed_pdf_dir,
     read_json,
     render_pdf_summary_note,
     render_topic_summary_note,
     resolve_resource_paths,
+    scan_intake_pdf_library,
     scan_pdf_library,
     summary_note_name,
     synthesize_topic_summary,
@@ -1316,18 +1322,143 @@ def note_body(markdown: str) -> str:
     return markdown.strip()
 
 
+def _is_within(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _resource_folders(paths: dict[str, Path]) -> dict[str, str]:
+    pdf_root = paths["pdfs"]
+    ensure_resource_subdirectories(pdf_root)
+    processed_root = processed_pdf_dir(pdf_root)
+    failed_root = failed_pdf_dir(pdf_root)
+    return {
+        "pdfs": rel_to_posix(pdf_root.relative_to(VAULT_ROOT)),
+        "processed": rel_to_posix(processed_root.relative_to(VAULT_ROOT)),
+        "failed": rel_to_posix(failed_root.relative_to(VAULT_ROOT)),
+        "summaries": rel_to_posix(paths["summaries"].relative_to(VAULT_ROOT)),
+        "topics": rel_to_posix(paths["topics"].relative_to(VAULT_ROOT)),
+        "index": rel_to_posix(paths["index"].relative_to(VAULT_ROOT)),
+    }
+
+
+def _resource_item_state(
+    item: dict[str, object],
+    *,
+    index_dir: Path,
+    processed_root: Path,
+    failed_root: Path,
+) -> dict[str, object]:
+    pdf_path = Path(str(item["pdf_path"]))
+    index_payload = read_json(index_dir / f"{pdf_index_key(pdf_path)}.json", {})
+    explicit_status = str(index_payload.get("status", "")).strip().lower()
+
+    if explicit_status in {"pending", "processing", "done", "failed"}:
+        status = explicit_status
+    elif _is_within(pdf_path, failed_root):
+        status = "failed"
+    elif _is_within(pdf_path, processed_root):
+        status = "done"
+    elif is_processing_complete(item, require_embeddings=False):
+        status = "done"
+    else:
+        status = "pending"
+
+    enriched = dict(item)
+    enriched["status"] = status
+    if index_payload.get("processing_started_at"):
+        enriched["processingStartedAt"] = index_payload["processing_started_at"]
+    if index_payload.get("processing_finished_at"):
+        enriched["processingFinishedAt"] = index_payload["processing_finished_at"]
+    if index_payload.get("error_message"):
+        enriched["errorMessage"] = index_payload["error_message"]
+    if index_payload.get("original_pdf_rel_path"):
+        enriched["originalPdfRelPath"] = index_payload["original_pdf_rel_path"]
+    if index_payload.get("current_pdf_rel_path"):
+        enriched["currentPdfRelPath"] = index_payload["current_pdf_rel_path"]
+    return enriched
+
+
+def _resource_counts(items: list[dict[str, object]], summary_count: int) -> dict[str, int]:
+    return {
+        "pdfs": len(items),
+        "pending": sum(1 for item in items if item["status"] == "pending"),
+        "processing": sum(1 for item in items if item["status"] == "processing"),
+        "done": sum(1 for item in items if item["status"] == "done"),
+        "failed": sum(1 for item in items if item["status"] == "failed"),
+        "summaries": summary_count,
+        "indexed": sum(1 for item in items if item["has_index"]),
+        "embedded": sum(1 for item in items if item["has_embeddings"]),
+    }
+
+
 def get_resource_status() -> dict[str, object]:
     _, paths = resource_settings_and_paths()
-    files = scan_pdf_library(paths["pdfs"], paths["summaries"], paths["index"])
+    pdf_root = paths["pdfs"]
+    processed_root = processed_pdf_dir(pdf_root)
+    failed_root = failed_pdf_dir(pdf_root)
+    summary_dir = paths["summaries"]
+    index_dir = paths["index"]
+    folders = _resource_folders(paths)
+
+    files = [
+        _resource_item_state(
+            item,
+            index_dir=index_dir,
+            processed_root=processed_root,
+            failed_root=failed_root,
+        )
+        for item in scan_pdf_library(pdf_root, summary_dir, index_dir)
+    ]
+    intake_files = [
+        _resource_item_state(
+            item,
+            index_dir=index_dir,
+            processed_root=processed_root,
+            failed_root=failed_root,
+        )
+        for item in scan_intake_pdf_library(pdf_root, summary_dir, index_dir)
+    ]
+    summary_count = len(list(summary_dir.rglob("*.md"))) if summary_dir.exists() else 0
+
     return {
-        "folders": {key: rel_to_posix(path.relative_to(VAULT_ROOT)) for key, path in paths.items()},
-        "counts": {
-            "pdfs": len(files),
-            "summaries": sum(1 for item in files if item["has_summary"]),
-            "indexed": sum(1 for item in files if item["has_index"]),
-            "embedded": sum(1 for item in files if item["has_embeddings"]),
-        },
+        "folders": folders,
+        "counts": _resource_counts(files, summary_count),
         "files": files,
+        "intakeFiles": intake_files,
+    }
+
+
+def get_resource_intake_status() -> dict[str, object]:
+    _, paths = resource_settings_and_paths()
+    pdf_root = paths["pdfs"]
+    processed_root = processed_pdf_dir(pdf_root)
+    failed_root = failed_pdf_dir(pdf_root)
+    summary_dir = paths["summaries"]
+    index_dir = paths["index"]
+    folders = _resource_folders(paths)
+
+    intake_files = [
+        _resource_item_state(
+            item,
+            index_dir=index_dir,
+            processed_root=processed_root,
+            failed_root=failed_root,
+        )
+        for item in scan_intake_pdf_library(pdf_root, summary_dir, index_dir)
+    ]
+    summary_count = len(list(summary_dir.rglob("*.md"))) if summary_dir.exists() else 0
+    counts = _resource_counts(intake_files, summary_count)
+    counts["done"] = len(list(processed_root.rglob("*.pdf"))) if processed_root.exists() else 0
+    counts["failed"] = len(list(failed_root.rglob("*.pdf"))) if failed_root.exists() else 0
+
+    return {
+        "folders": folders,
+        "counts": counts,
+        "intakeFiles": intake_files,
     }
 
 
@@ -1405,6 +1536,34 @@ def run_resource_summary(payload: dict[str, object]) -> dict[str, object]:
         "message": f"Summarized {len(results)} PDF(s).",
         "results": results,
         "status": get_resource_status(),
+    }
+
+
+def run_resource_process_intake(payload: dict[str, object]) -> dict[str, object]:
+    _, paths = resource_settings_and_paths()
+    generate_embeddings = bool(payload.get("generateEmbeddings"))
+    config = prepare_provider_config(payload)
+    intake_items = scan_intake_pdf_library(paths["pdfs"], paths["summaries"], paths["index"])
+    discovered = len(intake_items)
+    batch = process_intake_library(
+        VAULT_ROOT,
+        pdf_dir=paths["pdfs"],
+        summary_dir=paths["summaries"],
+        index_dir=paths["index"],
+        config=config,
+        generate_embeddings=generate_embeddings,
+    )
+    processed = int(batch.get("processed", 0))
+    succeeded = int(batch.get("succeeded", 0))
+    failed = int(batch.get("failed", 0))
+    return {
+        "discovered": discovered,
+        "processed": processed,
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": batch.get("results", []),
+        "status": get_resource_status(),
+        "message": f"Discovered {discovered} intake PDF(s); processed {processed} this run ({succeeded} succeeded, {failed} failed).",
     }
 
 
@@ -1521,6 +1680,28 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/resources/scan":
             try:
                 response = get_resource_status()
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/scan-intake":
+            try:
+                response = get_resource_intake_status()
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/process-intake":
+            try:
+                response = run_resource_process_intake(payload)
                 self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
             except Exception as exc:  # pragma: no cover - local best effort
                 self._send(

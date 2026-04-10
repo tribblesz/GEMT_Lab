@@ -15,6 +15,12 @@ const state = {
     embeddingModel: "",
     generateEmbeddings: false,
   },
+  intakeScanLoading: false,
+  intakeProcessLoading: false,
+  intakeScanError: "",
+  intakeProcessError: "",
+  intakeLastScan: null,
+  intakeLastProcess: null,
 };
 
 const SIDEBAR_STATE_KEY = "lab-log-writer-sidebar";
@@ -453,6 +459,134 @@ function syncResourceSelections() {
   }
 }
 
+function intakeQueueStatusCounts(intakeFiles) {
+  const tallies = { pending: 0, processing: 0, done: 0, failed: 0 };
+  for (const file of intakeFiles || []) {
+    const key = String(file.status || "pending").toLowerCase();
+    if (key in tallies) {
+      tallies[key] += 1;
+    } else {
+      tallies.pending += 1;
+    }
+  }
+  return tallies;
+}
+
+function intakeScanSummaryMarkup() {
+  const scan = state.intakeLastScan;
+  if (!scan) {
+    return '<p class="resource-help">Click <strong>Scan Intake Folder</strong> to load the intake queue and folder totals.</p>';
+  }
+  const folders = scan.folders || {};
+  const counts = scan.counts || {};
+  const intakeFiles = scan.intakeFiles || [];
+  const qc = intakeQueueStatusCounts(intakeFiles);
+  const folderLines = [
+    folders.pdfs && `<li>Intake / library root: <code>${escapeHtml(folders.pdfs)}</code></li>`,
+    folders.processed && `<li>Processed bucket: <code>${escapeHtml(folders.processed)}</code></li>`,
+    folders.failed && `<li>Failed bucket: <code>${escapeHtml(folders.failed)}</code></li>`,
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const queueRows = intakeFiles.length
+    ? intakeFiles
+        .map((file) => {
+          const err = file.errorMessage ? `<div class="resource-help">${escapeHtml(file.errorMessage)}</div>` : "";
+          return `
+            <tr>
+              <td><code>${escapeHtml(file.pdf_rel_path || file.pdf_name || "")}</code></td>
+              <td>${escapeHtml(file.status || "")}</td>
+              <td>${file.has_summary ? escapeHtml(file.summary_name || "Yes") : "—"}</td>
+              <td>${file.has_index ? "Yes" : "No"}</td>
+              <td>${err || "—"}</td>
+            </tr>
+          `;
+        })
+        .join("")
+    : '<tr><td colspan="5">No PDFs at the intake root (queue is empty).</td></tr>';
+
+  return `
+    <p class="resource-help">
+      <strong>Scope note:</strong> Queue counts apply only to PDFs sitting in the library root.
+      The processed/failed numbers below count <em>every</em> PDF under those bucket folders (recursive), including files from earlier runs or manual moves — they are not the same as the queue length.
+    </p>
+    ${folderLines ? `<ul class="resource-help">${folderLines}</ul>` : ""}
+    <div class="resource-stats">
+      <span class="resource-stat">Queue at root: ${intakeFiles.length}</span>
+      <span class="resource-stat">Pending: ${qc.pending}</span>
+      <span class="resource-stat">Processing: ${qc.processing}</span>
+      <span class="resource-stat">Indexed (queue): ${counts.indexed ?? 0}</span>
+      <span class="resource-stat">Embeddings (queue): ${counts.embedded ?? 0}</span>
+    </div>
+    <div class="resource-stats">
+      <span class="resource-stat">PDFs in processed folder (recursive): ${counts.done ?? 0}</span>
+      <span class="resource-stat">PDFs in failed folder (recursive): ${counts.failed ?? 0}</span>
+      <span class="resource-stat">Summary notes (vault, all): ${counts.summaries ?? 0}</span>
+    </div>
+    <div class="resource-table-wrap">
+      <table class="editable-table resource-table">
+        <thead>
+          <tr>
+            <th>PDF (queue)</th>
+            <th>Status</th>
+            <th>Summary</th>
+            <th>Indexed</th>
+            <th>Error / detail</th>
+          </tr>
+        </thead>
+        <tbody>${queueRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function intakeProcessResultMarkup() {
+  const run = state.intakeLastProcess;
+  if (!run) {
+    return "";
+  }
+  const resultRows = (run.results || []).length
+    ? run.results
+        .map((entry) => {
+          const ok = entry.success;
+          const pathCell = escapeHtml(entry.pdf_path || "");
+          const errCell = entry.error ? escapeHtml(entry.error) : "—";
+          return `
+            <tr>
+              <td>${ok ? "OK" : "Failed"}</td>
+              <td><code>${pathCell}</code></td>
+              <td>${errCell}</td>
+            </tr>
+          `;
+        })
+        .join("")
+    : '<tr><td colspan="3">No PDFs were attempted in this run (queue may have been empty or already complete).</td></tr>';
+
+  return `
+    <div class="resource-stats">
+      <span class="resource-stat">Last run — discovered: ${run.discovered ?? "—"}</span>
+      <span class="resource-stat">Attempted: ${run.processed ?? "—"}</span>
+      <span class="resource-stat">Succeeded: ${run.succeeded ?? "—"}</span>
+      <span class="resource-stat">Failed: ${run.failed ?? "—"}</span>
+    </div>
+    <p class="resource-help">${escapeHtml(run.message || "")}</p>
+    <p class="resource-help"><strong>Per-file results (this run only)</strong></p>
+    <div class="resource-table-wrap">
+      <table class="editable-table resource-table">
+        <thead>
+          <tr>
+            <th>Outcome</th>
+            <th>PDF path</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>${resultRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
 async function fetchOptions() {
   try {
     const response = await fetch("./api/options");
@@ -752,6 +886,26 @@ function renderResourcesPanel() {
         <span class="resource-stat">Selected: ${selectedCount}</span>
       </div>
 
+      <section class="form-section">
+        <h3>Intake folder (batch)</h3>
+        <p class="resource-help">
+          Drop new PDFs in the library root. <strong>Scan Intake Folder</strong> refreshes the queue and bucket totals.
+          <strong>Process Intake Folder</strong> ingests, summarizes, and moves each incomplete queue file using the provider settings below (same as manual ingest/summarize).
+        </p>
+        <div class="resource-actions">
+          <button id="resource-intake-scan" type="button" class="secondary-button" ${state.intakeScanLoading || state.intakeProcessLoading ? "disabled" : ""}>
+            ${state.intakeScanLoading ? "Scanning…" : "Scan Intake Folder"}
+          </button>
+          <button id="resource-intake-process" type="button" class="secondary-button" ${state.intakeScanLoading || state.intakeProcessLoading ? "disabled" : ""}>
+            ${state.intakeProcessLoading ? "Processing…" : "Process Intake Folder"}
+          </button>
+        </div>
+        ${state.intakeScanError ? `<p class="resource-help" role="alert"><strong>Intake scan error:</strong> ${escapeHtml(state.intakeScanError)}</p>` : ""}
+        ${state.intakeProcessError ? `<p class="resource-help" role="alert"><strong>Intake process error:</strong> ${escapeHtml(state.intakeProcessError)}</p>` : ""}
+        ${intakeScanSummaryMarkup()}
+        ${intakeProcessResultMarkup()}
+      </section>
+
       <div class="resource-grid">
         <label class="field">
           <span>Provider Preset</span>
@@ -873,6 +1027,89 @@ function renderResourcesPanel() {
     document.getElementById(id)?.addEventListener("input", () => {
       resourceConfigPayload();
     });
+  });
+
+  document.getElementById("resource-intake-scan")?.addEventListener("click", async () => {
+    state.intakeScanLoading = true;
+    state.intakeScanError = "";
+    renderResourcesPanel();
+    try {
+      const response = await fetch("./api/resources/scan-intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        state.intakeScanError = data.error || "Could not scan intake folder.";
+        state.intakeLastScan = null;
+        showMessage(state.intakeScanError, "error");
+      } else {
+        state.intakeLastScan = data;
+        showMessage("Scanned the intake folder.", "success");
+      }
+    } catch {
+      state.intakeScanError = "Could not scan intake folder.";
+      state.intakeLastScan = null;
+      showMessage(state.intakeScanError, "error");
+    } finally {
+      state.intakeScanLoading = false;
+      renderResourcesPanel();
+    }
+  });
+
+  document.getElementById("resource-intake-process")?.addEventListener("click", async () => {
+    const payload = resourceConfigPayload();
+    state.intakeProcessLoading = true;
+    state.intakeProcessError = "";
+    renderResourcesPanel();
+    try {
+      const response = await fetch("./api/resources/process-intake", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        state.intakeProcessError = data.error || "Could not process intake folder.";
+        state.intakeLastProcess = null;
+        showMessage(state.intakeProcessError, "error");
+      } else {
+        state.intakeLastProcess = {
+          discovered: data.discovered,
+          processed: data.processed,
+          succeeded: data.succeeded,
+          failed: data.failed,
+          results: data.results || [],
+          message: data.message || "",
+        };
+        if (data.status?.files) {
+          state.resourceFiles = data.status.files;
+          syncResourceSelections();
+        }
+        showMessage(data.message || "Intake processing completed.", "success");
+        try {
+          const scanResponse = await fetch("./api/resources/scan-intake", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({}),
+          });
+          const scanData = await scanResponse.json();
+          if (scanResponse.ok) {
+            state.intakeLastScan = scanData;
+          }
+        } catch {
+          // leave prior intake scan snapshot
+        }
+      }
+    } catch {
+      state.intakeProcessError = "Could not process intake folder.";
+      state.intakeLastProcess = null;
+      showMessage(state.intakeProcessError, "error");
+    } finally {
+      state.intakeProcessLoading = false;
+      renderResourcesPanel();
+    }
   });
 
   document.getElementById("resource-scan")?.addEventListener("click", async () => {
