@@ -7,14 +7,15 @@
       "baseUrls": [
         "http://localhost:11434"
       ],
-      "defaultModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "defaultModel": "llama3.1",
       "models": [
+        "llama3.1",
         "gemma-4-26B-A4B-it-Q4_K_M"
       ],
-      "defaultEmbeddingModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "defaultEmbeddingModel": "nomic-embed-text",
       "embeddingModels": [
-        "gemma-4-26B-A4B-it-Q4_K_M",
-        "nomic-embed-text"
+        "nomic-embed-text",
+        "gemma-4-26B-A4B-it-Q4_K_M"
       ]
     },
     "lmstudio": {
