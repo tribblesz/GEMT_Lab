@@ -27,6 +27,7 @@ from resources import (
     prepare_provider_config,
     process_intake_library,
     processed_pdf_dir,
+    read_resource_settings,
     read_json,
     render_pdf_summary_note,
     render_topic_summary_note,
@@ -38,6 +39,7 @@ from resources import (
     summarize_pdf_chunks,
     topic_note_name,
     unsummarized_pdf_rel_paths,
+    write_resource_settings,
 )
 
 
@@ -1481,7 +1483,16 @@ def get_resource_intake_status() -> dict[str, object]:
 
 
 def get_resource_presets() -> dict[str, object]:
-    return {"presets": build_provider_presets()}
+    return {"presets": build_provider_presets(), "settings": read_resource_settings()}
+
+
+def get_resource_settings() -> dict[str, object]:
+    return {"settings": read_resource_settings()}
+
+
+def save_resource_settings_payload(payload: dict[str, object]) -> dict[str, object]:
+    settings_payload = payload.get("settings") if isinstance(payload.get("settings"), dict) else payload
+    return {"settings": write_resource_settings(settings_payload)}
 
 
 def get_resource_pdf(relative_value: str) -> tuple[Path, bytes]:
@@ -1661,6 +1672,10 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
             payload = json.dumps(get_resource_presets()).encode("utf-8")
             self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
             return
+        if path == "/api/resources/settings":
+            payload = json.dumps(get_resource_settings()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
         if path == "/api/resources/pdf":
             rel_path = parse_qs(parsed.query).get("path", [""])[0]
             try:
@@ -1698,6 +1713,17 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/resources/scan":
             try:
                 response = get_resource_status()
+                self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
+            except Exception as exc:  # pragma: no cover - local best effort
+                self._send(
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                    json.dumps({"error": str(exc)}).encode("utf-8"),
+                    "application/json; charset=utf-8",
+                )
+            return
+        if parsed.path == "/api/resources/settings":
+            try:
+                response = save_resource_settings_payload(payload)
                 self._send(HTTPStatus.OK, json.dumps(response).encode("utf-8"), "application/json; charset=utf-8")
             except Exception as exc:  # pragma: no cover - local best effort
                 self._send(

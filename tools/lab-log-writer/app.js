@@ -4,6 +4,13 @@ const state = {
   collapsedGroups: {},
   resourceFiles: [],
   resourcePresets: [],
+  resourceSettings: {
+    defaultProvider: "ollama",
+    providers: {},
+  },
+  resourceApiKeys: {
+    providers: {},
+  },
   selectedResourcePaths: {},
   resourcePreviewPath: "",
   resourceTopicTitle: "",
@@ -24,6 +31,8 @@ const state = {
 };
 
 const SIDEBAR_STATE_KEY = "lab-log-writer-sidebar";
+const RESOURCE_API_KEYS_KEY = "lab-log-writer-resource-api-keys-v1";
+const KNOWN_RESOURCE_PROVIDERS = ["ollama", "lmstudio", "openai", "anthropic"];
 const DEFAULT_GROUP_STATE = {
   daily: false,
   experiment: false,
@@ -587,12 +596,297 @@ function intakeProcessResultMarkup() {
   `;
 }
 
+function normalizeSavedValues(values) {
+  const seen = new Set();
+  return (values || [])
+    .map((value) => `${value || ""}`.trim())
+    .filter((value) => {
+      if (!value || seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+}
+
+function knownResourceProviders(settingsOverride = null) {
+  const fromPresets = state.resourcePresets.map((preset) => `${preset.provider || ""}`.trim()).filter(Boolean);
+  const fromSettings = Object.keys((settingsOverride || state.resourceSettings || {}).providers || {}).map((key) => key.trim()).filter(Boolean);
+  return Array.from(new Set([...KNOWN_RESOURCE_PROVIDERS, ...fromPresets, ...fromSettings]));
+}
+
+function blankProviderSettings(provider) {
+  return {
+    provider,
+    defaultBaseUrl: "",
+    baseUrls: [],
+    defaultModel: "",
+    models: [],
+    defaultEmbeddingModel: "",
+    embeddingModels: [],
+  };
+}
+
+function normalizeResourceSettings(settings) {
+  const raw = settings && typeof settings === "object" ? settings : {};
+  const providers = {};
+  knownResourceProviders(raw).forEach((provider) => {
+    const source = raw.providers?.[provider] || {};
+    const baseUrls = normalizeSavedValues([source.defaultBaseUrl, ...(source.baseUrls || [])]);
+    const models = normalizeSavedValues([source.defaultModel, ...(source.models || [])]);
+    const embeddingModels = normalizeSavedValues([source.defaultEmbeddingModel, ...(source.embeddingModels || [])]);
+    providers[provider] = {
+      provider,
+      defaultBaseUrl: `${source.defaultBaseUrl || ""}`.trim() || baseUrls[0] || "",
+      baseUrls,
+      defaultModel: `${source.defaultModel || ""}`.trim() || models[0] || "",
+      models,
+      defaultEmbeddingModel: `${source.defaultEmbeddingModel || ""}`.trim() || embeddingModels[0] || "",
+      embeddingModels,
+    };
+  });
+  const providerIds = Object.keys(providers);
+  const requestedDefault = `${raw.defaultProvider || ""}`.trim();
+  return {
+    defaultProvider: providerIds.includes(requestedDefault) ? requestedDefault : providerIds[0] || "ollama",
+    providers,
+  };
+}
+
+function getPresetForProvider(provider) {
+  return state.resourcePresets.find((preset) => preset.provider === provider) || null;
+}
+
+function getProviderSettings(provider) {
+  return state.resourceSettings.providers?.[provider] || blankProviderSettings(provider);
+}
+
+function maskApiKey(value) {
+  const text = `${value || ""}`.trim();
+  if (!text) {
+    return "";
+  }
+  return text.length <= 4 ? "••••" : `••••${text.slice(-4)}`;
+}
+
+function normalizeResourceApiKeys(store) {
+  const raw = store && typeof store === "object" ? store : {};
+  const providers = {};
+  knownResourceProviders().forEach((provider) => {
+    const bucket = raw.providers?.[provider] || {};
+    const entriesByBaseUrl = new Map();
+    (bucket.entries || []).forEach((entry) => {
+      const baseUrl = `${entry?.baseUrl || ""}`.trim();
+      const value = `${entry?.value || ""}`.trim();
+      if (!value) {
+        return;
+      }
+      entriesByBaseUrl.set(baseUrl, { baseUrl, value });
+    });
+    const entries = Array.from(entriesByBaseUrl.values());
+    const defaultBaseUrl = `${bucket.defaultBaseUrl || ""}`.trim();
+    providers[provider] = {
+      defaultBaseUrl: entries.some((entry) => entry.baseUrl === defaultBaseUrl) ? defaultBaseUrl : entries[0]?.baseUrl || "",
+      entries,
+    };
+  });
+  return { providers };
+}
+
+function loadResourceApiKeys() {
+  try {
+    const raw = window.localStorage.getItem(RESOURCE_API_KEYS_KEY);
+    return normalizeResourceApiKeys(raw ? JSON.parse(raw) : {});
+  } catch (error) {
+    return normalizeResourceApiKeys({});
+  }
+}
+
+function persistResourceApiKeys() {
+  state.resourceApiKeys = normalizeResourceApiKeys(state.resourceApiKeys);
+  window.localStorage.setItem(RESOURCE_API_KEYS_KEY, JSON.stringify(state.resourceApiKeys));
+}
+
+function matchingApiKeyEntry(provider, baseUrl) {
+  const bucket = state.resourceApiKeys.providers?.[provider];
+  if (!bucket) {
+    return null;
+  }
+  const exactBaseUrl = `${baseUrl || ""}`.trim();
+  if (exactBaseUrl) {
+    return bucket.entries.find((entry) => entry.baseUrl === exactBaseUrl) || null;
+  }
+  if (bucket.defaultBaseUrl) {
+    return bucket.entries.find((entry) => entry.baseUrl === bucket.defaultBaseUrl) || null;
+  }
+  return bucket.entries[0] || null;
+}
+
+function apiKeyOptionsForProvider(provider) {
+  return (state.resourceApiKeys.providers?.[provider]?.entries || []).map((entry) => ({
+    value: entry.baseUrl,
+    label: entry.baseUrl ? `${entry.baseUrl} (${maskApiKey(entry.value)})` : `Default (${maskApiKey(entry.value)})`,
+  }));
+}
+
+function effectiveProviderConfig(provider) {
+  const saved = getProviderSettings(provider);
+  const preset = getPresetForProvider(provider);
+  const baseUrl = saved.defaultBaseUrl || preset?.baseUrl || "";
+  const model = saved.defaultModel || preset?.model || "";
+  const embeddingModel = saved.defaultEmbeddingModel || preset?.embeddingModel || "";
+  return {
+    provider,
+    baseUrl,
+    model,
+    embeddingModel,
+    apiKey: matchingApiKeyEntry(provider, baseUrl)?.value || "",
+  };
+}
+
+function applyResourceDefaults(provider, overrides = {}) {
+  const defaults = effectiveProviderConfig(provider);
+  const baseUrl = overrides.baseUrl !== undefined ? overrides.baseUrl : defaults.baseUrl;
+  state.resourceConfig = {
+    ...state.resourceConfig,
+    provider,
+    baseUrl,
+    model: overrides.model !== undefined ? overrides.model : defaults.model,
+    embeddingModel: overrides.embeddingModel !== undefined ? overrides.embeddingModel : defaults.embeddingModel,
+    apiKey: overrides.apiKey !== undefined ? overrides.apiKey : matchingApiKeyEntry(provider, baseUrl)?.value || "",
+  };
+}
+
+function syncResourceConfigFromDom() {
+  state.resourceConfig = {
+    ...state.resourceConfig,
+    provider: document.getElementById("resource-provider")?.value || state.resourceConfig.provider || "ollama",
+    baseUrl: document.getElementById("resource-base-url")?.value.trim() || "",
+    apiKey: document.getElementById("resource-api-key")?.value.trim() || "",
+    model: document.getElementById("resource-model")?.value.trim() || "",
+    embeddingModel: document.getElementById("resource-embedding-model")?.value.trim() || "",
+    generateEmbeddings: Boolean(document.getElementById("resource-generate-embeddings")?.checked),
+  };
+  return state.resourceConfig;
+}
+
+function saveResourceSettingsState(provider, config) {
+  const next = normalizeResourceSettings(state.resourceSettings);
+  const current = {
+    ...blankProviderSettings(provider),
+    ...(next.providers?.[provider] || {}),
+  };
+  next.defaultProvider = provider;
+  if (config.baseUrl) {
+    current.defaultBaseUrl = config.baseUrl;
+    current.baseUrls = normalizeSavedValues([config.baseUrl, ...(current.baseUrls || [])]);
+  }
+  if (config.model) {
+    current.defaultModel = config.model;
+    current.models = normalizeSavedValues([config.model, ...(current.models || [])]);
+  }
+  if (config.embeddingModel) {
+    current.defaultEmbeddingModel = config.embeddingModel;
+    current.embeddingModels = normalizeSavedValues([config.embeddingModel, ...(current.embeddingModels || [])]);
+  }
+  next.providers[provider] = current;
+  state.resourceSettings = normalizeResourceSettings(next);
+}
+
+async function persistResourceSettings(showErrors = false) {
+  try {
+    const response = await fetch("./api/resources/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ settings: state.resourceSettings }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Could not save resource defaults.");
+    }
+    state.resourceSettings = normalizeResourceSettings(data.settings || state.resourceSettings);
+    return true;
+  } catch (error) {
+    if (showErrors) {
+      showMessage(error.message || "Could not save resource defaults.", "error");
+    }
+    return false;
+  }
+}
+
+async function persistCurrentResourceSettings(showErrors = false) {
+  const config = syncResourceConfigFromDom();
+  saveResourceSettingsState(config.provider, config);
+  return persistResourceSettings(showErrors);
+}
+
+function saveCurrentApiKeyLocally() {
+  const config = syncResourceConfigFromDom();
+  if (!config.apiKey) {
+    return;
+  }
+  const bucket = state.resourceApiKeys.providers?.[config.provider] || { defaultBaseUrl: "", entries: [] };
+  const filtered = (bucket.entries || []).filter((entry) => entry.baseUrl !== config.baseUrl);
+  filtered.unshift({ baseUrl: config.baseUrl, value: config.apiKey });
+  state.resourceApiKeys.providers[config.provider] = {
+    defaultBaseUrl: config.baseUrl,
+    entries: filtered,
+  };
+  persistResourceApiKeys();
+}
+
+function removeSavedProviderValue(provider, fieldKey, value) {
+  const next = normalizeResourceSettings(state.resourceSettings);
+  const current = {
+    ...blankProviderSettings(provider),
+    ...(next.providers?.[provider] || {}),
+  };
+  const trimmedValue = `${value || ""}`.trim();
+  if (!trimmedValue) {
+    return;
+  }
+  if (fieldKey === "baseUrl") {
+    current.baseUrls = (current.baseUrls || []).filter((item) => item !== trimmedValue);
+    if (current.defaultBaseUrl === trimmedValue) {
+      current.defaultBaseUrl = current.baseUrls[0] || "";
+    }
+  }
+  if (fieldKey === "model") {
+    current.models = (current.models || []).filter((item) => item !== trimmedValue);
+    if (current.defaultModel === trimmedValue) {
+      current.defaultModel = current.models[0] || "";
+    }
+  }
+  if (fieldKey === "embeddingModel") {
+    current.embeddingModels = (current.embeddingModels || []).filter((item) => item !== trimmedValue);
+    if (current.defaultEmbeddingModel === trimmedValue) {
+      current.defaultEmbeddingModel = current.embeddingModels[0] || "";
+    }
+  }
+  next.providers[provider] = current;
+  state.resourceSettings = normalizeResourceSettings(next);
+}
+
+function removeCurrentApiKeyLocally(provider, baseUrl) {
+  const bucket = state.resourceApiKeys.providers?.[provider];
+  if (!bucket) {
+    return;
+  }
+  const trimmedBaseUrl = `${baseUrl || ""}`.trim();
+  const entries = (bucket.entries || []).filter((entry) => entry.baseUrl !== trimmedBaseUrl);
+  state.resourceApiKeys.providers[provider] = {
+    defaultBaseUrl: bucket.defaultBaseUrl === trimmedBaseUrl ? entries[0]?.baseUrl || "" : bucket.defaultBaseUrl,
+    entries,
+  };
+  persistResourceApiKeys();
+}
+
 async function fetchOptions() {
   try {
     const response = await fetch("./api/options");
     const data = await response.json();
     state.options = data;
-    fetchResourcePresets();
+    await fetchResourcePresets();
     serverStatus.textContent = "Connected";
     serverStatus.classList.add("status-ok");
     renderForm(state.activeForm);
@@ -608,11 +902,17 @@ async function fetchResourcePresets() {
     const response = await fetch("./api/resources/presets");
     const data = await response.json();
     state.resourcePresets = data.presets || [];
+    state.resourceSettings = normalizeResourceSettings(data.settings || {});
+    state.resourceApiKeys = loadResourceApiKeys();
+    applyResourceDefaults(state.resourceSettings.defaultProvider || "ollama");
     if (state.activeForm === "resource-library") {
       renderResourcesPanel();
     }
   } catch (error) {
     state.resourcePresets = [];
+    state.resourceSettings = normalizeResourceSettings({});
+    state.resourceApiKeys = loadResourceApiKeys();
+    applyResourceDefaults(state.resourceSettings.defaultProvider || "ollama");
   }
 }
 
@@ -806,14 +1106,7 @@ function resourcePdfUrl(relativePath) {
 }
 
 function resourceConfigPayload(pdfsOverride = null) {
-  state.resourceConfig = {
-    provider: document.getElementById("resource-provider")?.value || "ollama",
-    baseUrl: document.getElementById("resource-base-url")?.value.trim() || "",
-    apiKey: document.getElementById("resource-api-key")?.value.trim() || "",
-    model: document.getElementById("resource-model")?.value.trim() || "",
-    embeddingModel: document.getElementById("resource-embedding-model")?.value.trim() || "",
-    generateEmbeddings: Boolean(document.getElementById("resource-generate-embeddings")?.checked),
-  };
+  state.resourceConfig = syncResourceConfigFromDom();
   return {
     ...state.resourceConfig,
     pdfs: pdfsOverride || selectedPdfPaths(),
@@ -843,6 +1136,32 @@ function renderResourcesPanel() {
   const summaryCount = state.resourceFiles.filter((file) => file.has_summary).length;
   const unsummarizedCount = state.resourceFiles.length - summaryCount;
   const selectedCount = selectedPdfPaths().length;
+  const providerSettings = getProviderSettings(state.resourceConfig.provider);
+  const providerOptions = knownResourceProviders()
+    .map(
+      (provider) =>
+        `<option value="${escapeHtml(provider)}" ${state.resourceConfig.provider === provider ? "selected" : ""}>${escapeHtml(
+          provider === "lmstudio" ? "LM Studio" : provider.charAt(0).toUpperCase() + provider.slice(1)
+        )}</option>`
+    )
+    .join("");
+  const baseUrlOptions = (providerSettings.baseUrls || [])
+    .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+    .join("");
+  const modelOptions = (providerSettings.models || [])
+    .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+    .join("");
+  const embeddingModelOptions = (providerSettings.embeddingModels || [])
+    .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+    .join("");
+  const apiKeyOptions = apiKeyOptionsForProvider(state.resourceConfig.provider)
+    .map(
+      (entry) =>
+        `<option value="${escapeHtml(entry.value)}" ${entry.value === state.resourceConfig.baseUrl ? "selected" : ""}>${escapeHtml(
+          entry.label
+        )}</option>`
+    )
+    .join("");
   const rows = state.resourceFiles.length
     ? state.resourceFiles.map(resourceRowMarkup).join("")
     : '<tr><td colspan="8">No PDFs found. Put files into <code>ELN_vault/Resources/APT-FIM/PDFs</code>, then click Scan PDFs.</td></tr>';
@@ -916,29 +1235,49 @@ function renderResourcesPanel() {
         <label class="field">
           <span>Provider</span>
           <select id="resource-provider">
-            <option value="ollama" ${state.resourceConfig.provider === "ollama" ? "selected" : ""}>Ollama</option>
-            <option value="lmstudio" ${state.resourceConfig.provider === "lmstudio" ? "selected" : ""}>LM Studio</option>
-            <option value="openai" ${state.resourceConfig.provider === "openai" ? "selected" : ""}>OpenAI</option>
-            <option value="anthropic" ${state.resourceConfig.provider === "anthropic" ? "selected" : ""}>Anthropic</option>
+            ${providerOptions}
           </select>
         </label>
         <label class="field">
           <span>Base URL</span>
-          <input id="resource-base-url" type="text" placeholder="Optional custom API base URL" value="${escapeHtml(state.resourceConfig.baseUrl)}" />
+          <input id="resource-base-url" type="text" list="resource-base-url-list" placeholder="Optional custom API base URL" value="${escapeHtml(state.resourceConfig.baseUrl)}" />
+          <datalist id="resource-base-url-list">${baseUrlOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-base-url-remove" type="button" class="secondary-button" ${state.resourceConfig.baseUrl ? "" : "disabled"}>Remove saved URL</button>
+          </div>
         </label>
         <label class="field">
           <span>Model</span>
-          <input id="resource-model" type="text" placeholder="Required for summaries and synthesis" value="${escapeHtml(state.resourceConfig.model)}" />
+          <input id="resource-model" type="text" list="resource-model-list" placeholder="Required for summaries and synthesis" value="${escapeHtml(state.resourceConfig.model)}" />
+          <datalist id="resource-model-list">${modelOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-model-remove" type="button" class="secondary-button" ${state.resourceConfig.model ? "" : "disabled"}>Remove saved model</button>
+          </div>
         </label>
         <label class="field">
           <span>Embedding Model</span>
-          <input id="resource-embedding-model" type="text" placeholder="Optional unless embeddings are enabled" value="${escapeHtml(state.resourceConfig.embeddingModel)}" />
+          <input id="resource-embedding-model" type="text" list="resource-embedding-model-list" placeholder="Optional unless embeddings are enabled" value="${escapeHtml(state.resourceConfig.embeddingModel)}" />
+          <datalist id="resource-embedding-model-list">${embeddingModelOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-embedding-model-remove" type="button" class="secondary-button" ${state.resourceConfig.embeddingModel ? "" : "disabled"}>Remove saved embedding model</button>
+          </div>
+        </label>
+        <label class="field field-wide">
+          <span>Saved API Keys</span>
+          <select id="resource-api-key-slot">
+            <option value="">Select a saved API key slot</option>
+            ${apiKeyOptions}
+          </select>
         </label>
         <label class="field field-wide">
           <span>API Key</span>
           <input id="resource-api-key" type="password" placeholder="Required for hosted providers" value="${escapeHtml(state.resourceConfig.apiKey)}" />
+          <div class="resource-field-actions">
+            <button id="resource-api-key-remove" type="button" class="secondary-button" ${state.resourceConfig.baseUrl || state.resourceConfig.apiKey ? "" : "disabled"}>Remove saved API key</button>
+          </div>
         </label>
       </div>
+      <p class="resource-help">Provider, base URL, model, and embedding model defaults are saved by the writer. API keys stay only in this browser.</p>
 
       <label class="resource-checkbox-inline">
         <input id="resource-generate-embeddings" type="checkbox" ${state.resourceConfig.generateEmbeddings ? "checked" : ""} />
@@ -1010,23 +1349,100 @@ function renderResourcesPanel() {
     if (!preset) {
       return;
     }
-    state.resourceConfig = {
-      ...state.resourceConfig,
-      provider: preset.provider,
+    applyResourceDefaults(preset.provider, {
       baseUrl: preset.baseUrl || "",
       model: preset.model || "",
       embeddingModel: preset.embeddingModel || "",
+    });
+    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
+    persistResourceSettings(true);
+    renderResourcesPanel();
+  });
+
+  document.getElementById("resource-provider")?.addEventListener("change", async (event) => {
+    applyResourceDefaults(event.target.value || "ollama");
+    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
+    await persistResourceSettings(true);
+    renderResourcesPanel();
+  });
+
+  ["resource-base-url", "resource-model", "resource-embedding-model", "resource-generate-embeddings"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", () => {
+      syncResourceConfigFromDom();
+    });
+    document.getElementById(id)?.addEventListener("change", async () => {
+      const config = syncResourceConfigFromDom();
+      if (id === "resource-base-url") {
+        state.resourceConfig.apiKey = matchingApiKeyEntry(config.provider, config.baseUrl)?.value || config.apiKey;
+      }
+      saveResourceSettingsState(config.provider, state.resourceConfig);
+      if (id === "resource-base-url" && state.resourceConfig.apiKey) {
+        saveCurrentApiKeyLocally();
+      }
+      await persistResourceSettings(true);
+      renderResourcesPanel();
+    });
+  });
+
+  document.getElementById("resource-api-key")?.addEventListener("input", () => {
+    syncResourceConfigFromDom();
+  });
+  document.getElementById("resource-api-key")?.addEventListener("change", () => {
+    syncResourceConfigFromDom();
+    saveCurrentApiKeyLocally();
+    renderResourcesPanel();
+  });
+
+  document.getElementById("resource-api-key-slot")?.addEventListener("change", (event) => {
+    const baseUrl = event.target.value || "";
+    const entry = matchingApiKeyEntry(state.resourceConfig.provider, baseUrl);
+    state.resourceConfig = {
+      ...state.resourceConfig,
+      baseUrl,
+      apiKey: entry?.value || "",
     };
     renderResourcesPanel();
   });
 
-  ["resource-provider", "resource-base-url", "resource-api-key", "resource-model", "resource-embedding-model", "resource-generate-embeddings"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("change", () => {
-      resourceConfigPayload();
+  document.getElementById("resource-base-url-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "baseUrl", config.baseUrl);
+    applyResourceDefaults(config.provider, {
+      baseUrl: getProviderSettings(config.provider).defaultBaseUrl || getPresetForProvider(config.provider)?.baseUrl || "",
     });
-    document.getElementById(id)?.addEventListener("input", () => {
-      resourceConfigPayload();
+    await persistResourceSettings(true);
+    renderResourcesPanel();
+  });
+
+  document.getElementById("resource-model-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "model", config.model);
+    applyResourceDefaults(config.provider, {
+      model: getProviderSettings(config.provider).defaultModel || getPresetForProvider(config.provider)?.model || "",
     });
+    await persistResourceSettings(true);
+    renderResourcesPanel();
+  });
+
+  document.getElementById("resource-embedding-model-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "embeddingModel", config.embeddingModel);
+    applyResourceDefaults(config.provider, {
+      embeddingModel:
+        getProviderSettings(config.provider).defaultEmbeddingModel || getPresetForProvider(config.provider)?.embeddingModel || "",
+    });
+    await persistResourceSettings(true);
+    renderResourcesPanel();
+  });
+
+  document.getElementById("resource-api-key-remove")?.addEventListener("click", () => {
+    const config = syncResourceConfigFromDom();
+    removeCurrentApiKeyLocally(config.provider, config.baseUrl);
+    state.resourceConfig = {
+      ...state.resourceConfig,
+      apiKey: matchingApiKeyEntry(config.provider, config.baseUrl)?.value || "",
+    };
+    renderResourcesPanel();
   });
 
   document.getElementById("resource-intake-scan")?.addEventListener("click", async () => {

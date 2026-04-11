@@ -15,6 +15,9 @@ try:
 except ImportError:  # pragma: no cover - optional dependency at runtime
     PdfReader = None
 
+MODULE_ROOT = Path(__file__).resolve().parent
+RESOURCE_SETTINGS_PATH = MODULE_ROOT / "resource-settings.json"
+
 
 DEFAULT_RESOURCE_FOLDERS = {
     "pdfs": "Resources/APT-FIM/PDFs",
@@ -28,7 +31,7 @@ PROVIDER_PRESETS = [
         "id": "ollama-local",
         "label": "Ollama local",
         "provider": "ollama",
-        "baseUrl": "http://127.0.0.1:11434",
+        "baseUrl": "http://localhost:11434",
         "model": "llama3.1",
         "embeddingModel": "nomic-embed-text",
         "notes": "Offline/local workflow through the Ollama API.",
@@ -103,6 +106,89 @@ def read_json(path: Path, fallback: Any) -> Any:
 def write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+
+
+def _resource_provider_names(settings_payload: dict[str, Any] | None = None) -> list[str]:
+    names = [str(preset.get("provider", "")).strip().lower() for preset in PROVIDER_PRESETS if str(preset.get("provider", "")).strip()]
+    if settings_payload:
+        names.extend(str(key).strip().lower() for key in (settings_payload.get("providers") or {}).keys() if str(key).strip())
+    return list(dict.fromkeys(name for name in names if name))
+
+
+def _resource_preset_map() -> dict[str, dict[str, str]]:
+    return {
+        str(preset["provider"]).strip().lower(): {
+            "defaultBaseUrl": str(preset.get("baseUrl", "")).strip(),
+            "defaultModel": str(preset.get("model", "")).strip(),
+            "defaultEmbeddingModel": str(preset.get("embeddingModel", "")).strip(),
+        }
+        for preset in PROVIDER_PRESETS
+    }
+
+
+def _normalize_saved_strings(values: list[object] | tuple[object, ...] | None) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for value in values or []:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        cleaned.append(text)
+        seen.add(text)
+    return cleaned
+
+
+def _normalize_provider_resource_settings(provider: str, payload: dict[str, Any] | None) -> dict[str, Any]:
+    raw = payload if isinstance(payload, dict) else {}
+    base_urls = _normalize_saved_strings([raw.get("defaultBaseUrl", ""), *(raw.get("baseUrls") or [])])
+    models = _normalize_saved_strings([raw.get("defaultModel", ""), *(raw.get("models") or [])])
+    embedding_models = _normalize_saved_strings([raw.get("defaultEmbeddingModel", ""), *(raw.get("embeddingModels") or [])])
+
+    default_base_url = str(raw.get("defaultBaseUrl", "")).strip() or (base_urls[0] if base_urls else "")
+    default_model = str(raw.get("defaultModel", "")).strip() or (models[0] if models else "")
+    default_embedding_model = str(raw.get("defaultEmbeddingModel", "")).strip() or (embedding_models[0] if embedding_models else "")
+
+    return {
+        "provider": provider,
+        "defaultBaseUrl": default_base_url,
+        "baseUrls": base_urls,
+        "defaultModel": default_model,
+        "models": models,
+        "defaultEmbeddingModel": default_embedding_model,
+        "embeddingModels": embedding_models,
+    }
+
+
+def normalize_resource_settings(payload: dict[str, Any] | None) -> dict[str, Any]:
+    raw = payload if isinstance(payload, dict) else {}
+    providers_in = raw.get("providers") if isinstance(raw.get("providers"), dict) else {}
+    provider_names = _resource_provider_names(raw)
+
+    normalized_providers = {
+        provider: _normalize_provider_resource_settings(provider, providers_in.get(provider))
+        for provider in provider_names
+    }
+
+    default_provider = str(raw.get("defaultProvider", "")).strip().lower()
+    if default_provider not in normalized_providers:
+        default_provider = "ollama" if "ollama" in normalized_providers else (provider_names[0] if provider_names else "")
+
+    return {
+        "defaultProvider": default_provider,
+        "providers": normalized_providers,
+    }
+
+
+def read_resource_settings(path: Path | None = None) -> dict[str, Any]:
+    settings_path = Path(path) if path is not None else RESOURCE_SETTINGS_PATH
+    return normalize_resource_settings(read_json(settings_path, {}))
+
+
+def write_resource_settings(payload: dict[str, Any], path: Path | None = None) -> dict[str, Any]:
+    settings_path = Path(path) if path is not None else RESOURCE_SETTINGS_PATH
+    normalized = normalize_resource_settings(payload)
+    write_json(settings_path, normalized)
+    return normalized
 
 
 def ensure_directories(paths: dict[str, Path]) -> None:
@@ -489,7 +575,7 @@ def prepare_provider_config(payload: dict[str, Any]) -> dict[str, str]:
         "embedding_model": str(payload.get("embeddingModel", "")).strip(),
     }
     if provider == "ollama":
-        config["base_url"] = config["base_url"] or "http://127.0.0.1:11434"
+        config["base_url"] = config["base_url"] or "http://localhost:11434"
     elif provider == "lmstudio":
         config["base_url"] = config["base_url"] or "http://127.0.0.1:1234/v1"
     elif provider == "openai":

@@ -94,7 +94,48 @@ class ResourcesTests(unittest.TestCase):
         self.assertIn("anthropic-default", preset_ids)
         ollama = next(preset for preset in presets if preset["id"] == "ollama-local")
         self.assertEqual(ollama["provider"], "ollama")
-        self.assertTrue(ollama["baseUrl"].startswith("http://"))
+        self.assertEqual(ollama["baseUrl"], "http://localhost:11434")
+        lmstudio = next(preset for preset in presets if preset["id"] == "lmstudio-local")
+        self.assertEqual(lmstudio["baseUrl"], "http://127.0.0.1:1234/v1")
+
+    def test_read_resource_settings_returns_normalized_defaults(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings = resources.read_resource_settings(Path(temp_dir) / "resource-settings.json")
+
+        self.assertEqual(settings["defaultProvider"], "ollama")
+        self.assertIn("ollama", settings["providers"])
+        self.assertEqual(settings["providers"]["ollama"]["baseUrls"], [])
+        self.assertEqual(settings["providers"]["ollama"]["models"], [])
+
+    def test_write_resource_settings_round_trips_and_deduplicates(self):
+        resources = load_resources_module()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings_path = Path(temp_dir) / "resource-settings.json"
+            saved = resources.write_resource_settings(
+                {
+                    "defaultProvider": "lmstudio",
+                    "providers": {
+                        "lmstudio": {
+                            "defaultBaseUrl": "http://127.0.0.1:1234/v1",
+                            "baseUrls": ["http://127.0.0.1:1234/v1", "http://127.0.0.1:1234/v1", ""],
+                            "defaultModel": "gemma",
+                            "models": ["gemma", "gemma", "llama"],
+                            "defaultEmbeddingModel": "embedder",
+                            "embeddingModels": ["embedder", "embedder"],
+                        }
+                    },
+                },
+                settings_path,
+            )
+
+            reloaded = resources.read_resource_settings(settings_path)
+
+        self.assertEqual(saved["defaultProvider"], "lmstudio")
+        self.assertEqual(reloaded["defaultProvider"], "lmstudio")
+        self.assertEqual(reloaded["providers"]["lmstudio"]["baseUrls"], ["http://127.0.0.1:1234/v1"])
+        self.assertEqual(reloaded["providers"]["lmstudio"]["models"], ["gemma", "llama"])
+        self.assertEqual(reloaded["providers"]["lmstudio"]["embeddingModels"], ["embedder"])
 
     def test_scan_intake_pdf_library_ignores_processed_and_failed_subfolders(self):
         resources = load_resources_module()

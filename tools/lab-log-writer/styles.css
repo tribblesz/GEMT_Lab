@@ -305,6 +305,17 @@ code {
   margin-bottom: 1rem;
 }
 
+.resource-field-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.resource-field-actions .secondary-button {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+}
+
 .resource-stats {
   display: flex;
   flex-wrap: wrap;
