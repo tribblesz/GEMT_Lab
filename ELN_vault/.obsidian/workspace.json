@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Lists/Experiment/Experiment Logs.md",
+                "file": "Lists/Experiment/Ion Column Image Logs.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Experiment Logs"
+              "title": "Ion Column Image Logs"
             }
           }
         ],
@@ -229,10 +229,10 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Lists/Experiment/Experiment Logs.md"
+                "file": "Lists/Experiment/Ion Column Image Logs.md"
               },
               "icon": "lucide-info",
-              "title": "File properties for Experiment Logs"
+              "title": "File properties for Ion Column Image Logs"
             }
           }
         ],
@@ -258,8 +258,14 @@
       "homepage:Open homepage": false
     }
   },
-  "active": "ef7b09c60c2640d4",
+  "active": "4b8c203f4030494b",
   "lastOpenFiles": [
+    "Help & Guides Index.md",
+    "Notes/HowTos/Obsidian ELN/What Are Embeddings And What Are They For.md",
+    "ELN Dashboard.md",
+    "Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md",
+    "Quick Start Guide.md",
+    "Lists/Experiment/Experiment Logs.md",
     "Resources/APT-FIM/Summaries/2201.00738_Preprint_Atom_Probe_Tomography_Biological_or_Frozen_Liquid_Study_1.md",
     "Resources/APT-FIM/Summaries/Scientific-Reports-2022-s41598-022-22717-9.md",
     "Resources/APT-FIM/Summaries/2021_Miaja-Avila_EUV_Radiation_Pulsed_APT_of_III-Nitride_Semiconductors.md",
@@ -296,12 +302,6 @@
     "assets/templates/DataView Queries/DV Sample Raman Analysis.md",
     "assets/templates/Startup Template.md",
     "assets/templates/New Experiment Run.md",
-    "assets/templates/New Device.md",
-    "assets/templates/New Contact.md",
-    "assets/templates/New Analysis.md",
-    "assets/templates/Mermaid Charts/Flow Chart - Process.md",
-    "assets/templates/New Data Record.md",
-    "Experiment Logs/2026-04-09-sdf-sdf.md",
     "Resources/Instruments/ZEISS - Merlin/Documents/ZEISS_MERLIN_FE-SEM.jpg",
     "Notes/HowTos/Getting started with Obsidian/images/Pasted image 20250313150143.png",
     "Writing/Reports/Report BMBF/images/image_placeholder_r.png",

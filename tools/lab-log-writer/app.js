@@ -3,6 +3,7 @@ const state = {
   activeForm: "experiment-log",
   collapsedGroups: {},
   resourceFiles: [],
+  resourceColumnWidths: {},
   resourcePresets: [],
   resourceSettings: {
     defaultProvider: "ollama",
@@ -28,16 +29,46 @@ const state = {
   intakeProcessError: "",
   intakeLastScan: null,
   intakeLastProcess: null,
+  guideDocs: [],
+  guideDocsLoading: false,
+  guideDocsError: "",
+  guideFocusId: "",
 };
 
 const SIDEBAR_STATE_KEY = "lab-log-writer-sidebar";
 const RESOURCE_API_KEYS_KEY = "lab-log-writer-resource-api-keys-v1";
+const RESOURCE_TABLE_WIDTHS_KEY = "lab-log-writer-resource-table-widths-v1";
 const KNOWN_RESOURCE_PROVIDERS = ["ollama", "lmstudio", "openai", "anthropic"];
+const RESOURCE_TABLE_COLUMNS = [
+  { key: "select", label: "Select", defaultWidth: 54, minWidth: 48, className: "resource-col-select" },
+  { key: "pdf", label: "PDF", defaultWidth: 160, minWidth: 120, className: "resource-col-pdf" },
+  { key: "indexed", label: "Indexed", defaultWidth: 84, minWidth: 70, className: "resource-col-indexed" },
+  { key: "chunks", label: "Chunks", defaultWidth: 84, minWidth: 70, className: "resource-col-chunks" },
+  { key: "summary", label: "Summary Note", defaultWidth: 160, minWidth: 120, className: "resource-col-summary" },
+  { key: "embeddings", label: "Embeddings", defaultWidth: 98, minWidth: 84, className: "resource-col-embeddings" },
+  { key: "preview", label: "Preview", defaultWidth: 170, minWidth: 135, className: "resource-col-preview" },
+  { key: "modified", label: "Modified", defaultWidth: 138, minWidth: 110, className: "resource-col-modified" },
+];
+const RESOURCE_FILE_SECTIONS = [
+  { key: "notYetIndexed", title: "Not Yet Indexed", emptyMessage: "No scanned PDFs are currently waiting for indexing." },
+  {
+    key: "indexedNotSummarized",
+    title: "Indexed, Not Yet Summarized",
+    emptyMessage: "No indexed PDFs are currently waiting for a summary note.",
+  },
+  {
+    key: "indexedAndSummarized",
+    title: "Indexed And Summarized",
+    emptyMessage: "No scanned PDFs are currently both indexed and summarized.",
+  },
+];
 const DEFAULT_GROUP_STATE = {
   daily: false,
   experiment: false,
   reference: false,
   operations: false,
+  settings: false,
+  guides: false,
 };
 
 const formConfigs = {
@@ -294,6 +325,18 @@ const formConfigs = {
     customRenderer: "resources",
     sections: [],
   },
+  "llms-and-api-keys": {
+    title: "LLMs and API-keys",
+    description: "Manage remembered LLM providers, models, base URLs, embedding models, and browser-local API keys.",
+    customRenderer: "llm-settings",
+    sections: [],
+  },
+  "help-and-guides": {
+    title: "Help & Guides",
+    description: "Browse onboarding and explanation notes collected from across the vault and the writer tooling.",
+    customRenderer: "help-guides",
+    sections: [],
+  },
   "daily-note": {
     title: "Daily Note",
     description: "Create a daily note in the dated daily-notes folder structure.",
@@ -449,6 +492,109 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizeResourceColumnWidths(widths = {}) {
+  const next = {};
+  for (const column of RESOURCE_TABLE_COLUMNS) {
+    const candidate = Number(widths[column.key]);
+    const fallback = Number.isFinite(candidate) ? candidate : column.defaultWidth;
+    next[column.key] = Math.max(column.minWidth, Math.round(fallback));
+  }
+  return next;
+}
+
+function resizeResourceColumnWidths(widths, columnKey, delta) {
+  const normalized = normalizeResourceColumnWidths(widths);
+  const index = RESOURCE_TABLE_COLUMNS.findIndex((column) => column.key === columnKey);
+  if (index < 0 || index >= RESOURCE_TABLE_COLUMNS.length - 1) {
+    return normalized;
+  }
+
+  const currentColumn = RESOURCE_TABLE_COLUMNS[index];
+  const result = { ...normalized };
+  const currentWidth = result[currentColumn.key];
+  const roundedDelta = Math.round(delta);
+
+  if (roundedDelta > 0) {
+    let remaining = roundedDelta;
+    for (let offset = index + 1; offset < RESOURCE_TABLE_COLUMNS.length && remaining > 0; offset += 1) {
+      const column = RESOURCE_TABLE_COLUMNS[offset];
+      const available = result[column.key] - column.minWidth;
+      const borrowed = Math.min(available, remaining);
+      result[column.key] -= borrowed;
+      remaining -= borrowed;
+    }
+    const appliedDelta = roundedDelta - remaining;
+    result[currentColumn.key] = currentWidth + appliedDelta;
+    return result;
+  }
+
+  const shrinkBy = Math.min(currentWidth - currentColumn.minWidth, Math.abs(roundedDelta));
+  if (shrinkBy <= 0) {
+    return result;
+  }
+  const nextColumn = RESOURCE_TABLE_COLUMNS[index + 1];
+  result[currentColumn.key] = currentWidth - shrinkBy;
+  result[nextColumn.key] += shrinkBy;
+  return result;
+}
+
+function loadResourceColumnWidths() {
+  try {
+    const raw = window.localStorage.getItem(RESOURCE_TABLE_WIDTHS_KEY);
+    return normalizeResourceColumnWidths(raw ? JSON.parse(raw) : {});
+  } catch (error) {
+    return normalizeResourceColumnWidths({});
+  }
+}
+
+function saveResourceColumnWidths() {
+  window.localStorage.setItem(RESOURCE_TABLE_WIDTHS_KEY, JSON.stringify(state.resourceColumnWidths));
+}
+
+function groupResourceFiles(files) {
+  return files.reduce(
+    (groups, file) => {
+      if (!file.has_index) {
+        groups.notYetIndexed.push(file);
+      } else if (file.has_summary) {
+        groups.indexedAndSummarized.push(file);
+      } else {
+        groups.indexedNotSummarized.push(file);
+      }
+      return groups;
+    },
+    {
+      notYetIndexed: [],
+      indexedNotSummarized: [],
+      indexedAndSummarized: [],
+    }
+  );
+}
+
+function syncFormUrl(formKey) {
+  const params = new URLSearchParams(window.location.search);
+  params.set("form", formKey);
+  if (formKey === "help-and-guides" && state.guideFocusId) {
+    params.set("guide", state.guideFocusId);
+  } else {
+    params.delete("guide");
+  }
+  const nextQuery = params.toString();
+  const nextUrl = nextQuery ? `${window.location.pathname}?${params.toString()}` : window.location.pathname;
+  window.history.replaceState({}, "", nextUrl);
+}
+
+function guideCardId(guideId) {
+  return `guide-card-${guideId}`;
+}
+
+function scrollGuideIntoView(guideId, behavior = "smooth") {
+  if (!guideId) {
+    return;
+  }
+  document.getElementById(guideCardId(guideId))?.scrollIntoView({ behavior, block: "start" });
 }
 
 function syncResourceSelections() {
@@ -758,6 +904,7 @@ function applyResourceDefaults(provider, overrides = {}) {
 }
 
 function syncResourceConfigFromDom() {
+  const generateEmbeddingsInput = document.getElementById("resource-generate-embeddings");
   state.resourceConfig = {
     ...state.resourceConfig,
     provider: document.getElementById("resource-provider")?.value || state.resourceConfig.provider || "ollama",
@@ -765,7 +912,10 @@ function syncResourceConfigFromDom() {
     apiKey: document.getElementById("resource-api-key")?.value.trim() || "",
     model: document.getElementById("resource-model")?.value.trim() || "",
     embeddingModel: document.getElementById("resource-embedding-model")?.value.trim() || "",
-    generateEmbeddings: Boolean(document.getElementById("resource-generate-embeddings")?.checked),
+    generateEmbeddings:
+      generateEmbeddingsInput instanceof HTMLInputElement
+        ? Boolean(generateEmbeddingsInput.checked)
+        : state.resourceConfig.generateEmbeddings,
   };
   return state.resourceConfig;
 }
@@ -907,12 +1057,19 @@ async function fetchResourcePresets() {
     applyResourceDefaults(state.resourceSettings.defaultProvider || "ollama");
     if (state.activeForm === "resource-library") {
       renderResourcesPanel();
+    } else if (state.activeForm === "llms-and-api-keys") {
+      renderLlmSettingsPanel();
     }
   } catch (error) {
     state.resourcePresets = [];
     state.resourceSettings = normalizeResourceSettings({});
     state.resourceApiKeys = loadResourceApiKeys();
     applyResourceDefaults(state.resourceSettings.defaultProvider || "ollama");
+    if (state.activeForm === "resource-library") {
+      renderResourcesPanel();
+    } else if (state.activeForm === "llms-and-api-keys") {
+      renderLlmSettingsPanel();
+    }
   }
 }
 
@@ -928,6 +1085,43 @@ async function fetchResourceFiles(showErrors = true) {
   } catch (error) {
     if (showErrors) {
       showMessage("Could not load PDF resource data from the writer server.", "error");
+    }
+  }
+}
+
+async function fetchGuideDocs(showErrors = true) {
+  state.guideDocsLoading = true;
+  state.guideDocsError = "";
+  if (state.activeForm === "help-and-guides") {
+    renderGuidesPanel();
+  }
+
+  const shouldScroll = Boolean(state.guideFocusId);
+  try {
+    const response = await fetch("./api/guides/index");
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Could not load guide inventory.");
+    }
+    state.guideDocs = data.guides || [];
+    if (state.guideFocusId && !state.guideDocs.some((guide) => guide.id === state.guideFocusId)) {
+      state.guideFocusId = "";
+    }
+    if (!state.guideFocusId && state.guideDocs.length) {
+      state.guideFocusId = state.guideDocs[0].id;
+    }
+  } catch (error) {
+    state.guideDocsError = error.message || "Could not load guide inventory.";
+    if (showErrors) {
+      showMessage(state.guideDocsError, "error");
+    }
+  } finally {
+    state.guideDocsLoading = false;
+    if (state.activeForm === "help-and-guides") {
+      renderGuidesPanel();
+      if (shouldScroll && state.guideFocusId) {
+        window.requestAnimationFrame(() => scrollGuideIntoView(state.guideFocusId, "auto"));
+      }
     }
   }
 }
@@ -1113,15 +1307,41 @@ function resourceConfigPayload(pdfsOverride = null) {
   };
 }
 
+function resourceTableColGroupMarkup() {
+  return RESOURCE_TABLE_COLUMNS.map(
+    (column) =>
+      `<col data-col-key="${column.key}" class="${column.className}" style="width:${state.resourceColumnWidths[column.key]}px" />`
+  ).join("");
+}
+
+function resourceTableHeadMarkup() {
+  return RESOURCE_TABLE_COLUMNS.map((column, index) => {
+    const resizer =
+      index < RESOURCE_TABLE_COLUMNS.length - 1
+        ? `<button type="button" class="resource-column-resizer" data-col-key="${column.key}" aria-label="Resize ${escapeHtml(
+            column.label
+          )} column"></button>`
+        : "";
+    return `<th data-col-key="${column.key}" class="${column.className}" style="width:${state.resourceColumnWidths[column.key]}px">
+      <span class="resource-header-label">${escapeHtml(column.label)}</span>
+      ${resizer}
+    </th>`;
+  }).join("");
+}
+
+function resourceEmptyRowMarkup(message) {
+  return `<tr><td colspan="${RESOURCE_TABLE_COLUMNS.length}">${message}</td></tr>`;
+}
+
 function resourceRowMarkup(file) {
   const previewUrl = resourcePdfUrl(file.pdf_rel_path);
   return `
     <tr>
       <td><input type="checkbox" class="resource-checkbox" data-resource-path="${escapeHtml(file.pdf_rel_path)}" ${state.selectedResourcePaths[file.pdf_rel_path] ? "checked" : ""}></td>
-      <td><code>${escapeHtml(file.pdf_rel_path)}</code></td>
+      <td><code title="${escapeHtml(file.pdf_rel_path)}">${escapeHtml(file.pdf_rel_path)}</code></td>
       <td>${file.has_index ? "Yes" : "No"}</td>
       <td>${file.chunk_count || 0}</td>
-      <td>${file.has_summary ? escapeHtml(file.summary_name) : "-"}</td>
+      <td title="${escapeHtml(file.summary_name || "")}">${file.has_summary ? escapeHtml(file.summary_name) : "-"}</td>
       <td>${file.has_embeddings ? "Yes" : "No"}</td>
       <td>
         <button type="button" class="secondary-button resource-preview-button" data-resource-preview="${escapeHtml(file.pdf_rel_path)}">Preview</button>
@@ -1132,16 +1352,75 @@ function resourceRowMarkup(file) {
   `;
 }
 
-function renderResourcesPanel() {
-  const summaryCount = state.resourceFiles.filter((file) => file.has_summary).length;
-  const unsummarizedCount = state.resourceFiles.length - summaryCount;
-  const selectedCount = selectedPdfPaths().length;
+function resourceFileSectionMarkup(section, files, open = true) {
+  const rows = files.length ? files.map(resourceRowMarkup).join("") : resourceEmptyRowMarkup(section.emptyMessage);
+  return `
+    <details class="resource-file-section" ${open ? "open" : ""}>
+      <summary>
+        <span>${escapeHtml(section.title)}</span>
+        <span class="resource-count-pill">${files.length}</span>
+      </summary>
+      <div class="resource-table-wrap">
+        <table class="editable-table resource-table resource-file-table" data-resource-section="${section.key}">
+          <colgroup>${resourceTableColGroupMarkup()}</colgroup>
+          <thead>
+            <tr>${resourceTableHeadMarkup()}</tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </details>
+  `;
+}
+
+function applyResourceColumnWidthsToTables() {
+  document.querySelectorAll(".resource-file-table").forEach((table) => {
+    table.querySelectorAll("col[data-col-key]").forEach((col) => {
+      const key = col.dataset.colKey;
+      col.style.width = `${state.resourceColumnWidths[key]}px`;
+    });
+    table.querySelectorAll("th[data-col-key]").forEach((cell) => {
+      const key = cell.dataset.colKey;
+      cell.style.width = `${state.resourceColumnWidths[key]}px`;
+    });
+  });
+}
+
+function attachResourceColumnResizeHandlers() {
+  document.querySelectorAll(".resource-column-resizer").forEach((handle) => {
+    handle.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      const columnKey = event.currentTarget.dataset.colKey;
+      const startX = event.clientX;
+      const startingWidths = { ...state.resourceColumnWidths };
+
+      const onMouseMove = (moveEvent) => {
+        state.resourceColumnWidths = resizeResourceColumnWidths(startingWidths, columnKey, moveEvent.clientX - startX);
+        applyResourceColumnWidthsToTables();
+      };
+      const onMouseUp = () => {
+        saveResourceColumnWidths();
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    });
+  });
+}
+
+function resourceProviderLabel(provider) {
+  return provider === "lmstudio" ? "LM Studio" : provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
+function buildLlmSettingsViewModel() {
   const providerSettings = getProviderSettings(state.resourceConfig.provider);
   const providerOptions = knownResourceProviders()
     .map(
       (provider) =>
         `<option value="${escapeHtml(provider)}" ${state.resourceConfig.provider === provider ? "selected" : ""}>${escapeHtml(
-          provider === "lmstudio" ? "LM Studio" : provider.charAt(0).toUpperCase() + provider.slice(1)
+          resourceProviderLabel(provider)
         )}</option>`
     )
     .join("");
@@ -1162,9 +1441,6 @@ function renderResourcesPanel() {
         )}</option>`
     )
     .join("");
-  const rows = state.resourceFiles.length
-    ? state.resourceFiles.map(resourceRowMarkup).join("")
-    : '<tr><td colspan="8">No PDFs found. Put files into <code>ELN_vault/Resources/APT-FIM/PDFs</code>, then click Scan PDFs.</td></tr>';
   const presetOptions = [
     '<option value="">Manual configuration</option>',
     ...state.resourcePresets.map(
@@ -1179,6 +1455,216 @@ function renderResourcesPanel() {
       preset.model === state.resourceConfig.model &&
       preset.embeddingModel === state.resourceConfig.embeddingModel
   );
+  return {
+    providerOptions,
+    baseUrlOptions,
+    modelOptions,
+    embeddingModelOptions,
+    apiKeyOptions,
+    presetOptions,
+    activePreset,
+  };
+}
+
+function attachLlmSettingsHandlers(activePreset) {
+  document.getElementById("resource-preset")?.addEventListener("change", (event) => {
+    const preset = state.resourcePresets.find((item) => item.id === event.target.value);
+    if (!preset) {
+      return;
+    }
+    applyResourceDefaults(preset.provider, {
+      baseUrl: preset.baseUrl || "",
+      model: preset.model || "",
+      embeddingModel: preset.embeddingModel || "",
+    });
+    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
+    persistResourceSettings(true);
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-provider")?.addEventListener("change", async (event) => {
+    applyResourceDefaults(event.target.value || "ollama");
+    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
+    await persistResourceSettings(true);
+    renderLlmSettingsPanel();
+  });
+
+  ["resource-base-url", "resource-model", "resource-embedding-model"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", () => {
+      syncResourceConfigFromDom();
+    });
+    document.getElementById(id)?.addEventListener("change", async () => {
+      const config = syncResourceConfigFromDom();
+      if (id === "resource-base-url") {
+        state.resourceConfig.apiKey = matchingApiKeyEntry(config.provider, config.baseUrl)?.value || config.apiKey;
+      }
+      saveResourceSettingsState(config.provider, state.resourceConfig);
+      if (id === "resource-base-url" && state.resourceConfig.apiKey) {
+        saveCurrentApiKeyLocally();
+      }
+      await persistResourceSettings(true);
+      renderLlmSettingsPanel();
+    });
+  });
+
+  document.getElementById("resource-api-key")?.addEventListener("input", () => {
+    syncResourceConfigFromDom();
+  });
+  document.getElementById("resource-api-key")?.addEventListener("change", () => {
+    syncResourceConfigFromDom();
+    saveCurrentApiKeyLocally();
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-api-key-slot")?.addEventListener("change", (event) => {
+    const baseUrl = event.target.value || "";
+    const entry = matchingApiKeyEntry(state.resourceConfig.provider, baseUrl);
+    state.resourceConfig = {
+      ...state.resourceConfig,
+      baseUrl,
+      apiKey: entry?.value || "",
+    };
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-base-url-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "baseUrl", config.baseUrl);
+    applyResourceDefaults(config.provider, {
+      baseUrl: getProviderSettings(config.provider).defaultBaseUrl || getPresetForProvider(config.provider)?.baseUrl || "",
+    });
+    await persistResourceSettings(true);
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-model-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "model", config.model);
+    applyResourceDefaults(config.provider, {
+      model: getProviderSettings(config.provider).defaultModel || getPresetForProvider(config.provider)?.model || "",
+    });
+    await persistResourceSettings(true);
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-embedding-model-remove")?.addEventListener("click", async () => {
+    const config = syncResourceConfigFromDom();
+    removeSavedProviderValue(config.provider, "embeddingModel", config.embeddingModel);
+    applyResourceDefaults(config.provider, {
+      embeddingModel:
+        getProviderSettings(config.provider).defaultEmbeddingModel || getPresetForProvider(config.provider)?.embeddingModel || "",
+    });
+    await persistResourceSettings(true);
+    renderLlmSettingsPanel();
+  });
+
+  document.getElementById("resource-api-key-remove")?.addEventListener("click", () => {
+    const config = syncResourceConfigFromDom();
+    removeCurrentApiKeyLocally(config.provider, config.baseUrl);
+    state.resourceConfig = {
+      ...state.resourceConfig,
+      apiKey: matchingApiKeyEntry(config.provider, config.baseUrl)?.value || "",
+    };
+    renderLlmSettingsPanel();
+  });
+
+  if (activePreset) {
+    document.getElementById("resource-preset").value = activePreset.id;
+  }
+}
+
+function renderLlmSettingsPanel() {
+  const { providerOptions, baseUrlOptions, modelOptions, embeddingModelOptions, apiKeyOptions, presetOptions, activePreset } =
+    buildLlmSettingsViewModel();
+  formSections.innerHTML = `
+    <section class="form-section">
+      <h3>Connection Settings</h3>
+      <p class="resource-help">
+        Manage all remembered LLM connection details here. Provider, base URL, model, and embedding model defaults are saved by the
+        writer. API keys stay only in this browser.
+      </p>
+      <div class="resource-grid">
+        <label class="field">
+          <span>Provider Preset</span>
+          <select id="resource-preset">
+            ${presetOptions}
+          </select>
+        </label>
+        <label class="field">
+          <span>Provider</span>
+          <select id="resource-provider">
+            ${providerOptions}
+          </select>
+        </label>
+        <label class="field">
+          <span>Base URL</span>
+          <input id="resource-base-url" type="text" list="resource-base-url-list" placeholder="Optional custom API base URL" value="${escapeHtml(
+            state.resourceConfig.baseUrl
+          )}" />
+          <datalist id="resource-base-url-list">${baseUrlOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-base-url-remove" type="button" class="secondary-button" ${
+              state.resourceConfig.baseUrl ? "" : "disabled"
+            }>Remove saved URL</button>
+          </div>
+        </label>
+        <label class="field">
+          <span>Model</span>
+          <input id="resource-model" type="text" list="resource-model-list" placeholder="Required for summaries and synthesis" value="${escapeHtml(
+            state.resourceConfig.model
+          )}" />
+          <datalist id="resource-model-list">${modelOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-model-remove" type="button" class="secondary-button" ${
+              state.resourceConfig.model ? "" : "disabled"
+            }>Remove saved model</button>
+          </div>
+        </label>
+        <label class="field">
+          <span>Embedding Model</span>
+          <input id="resource-embedding-model" type="text" list="resource-embedding-model-list" placeholder="Optional unless embeddings are enabled" value="${escapeHtml(
+            state.resourceConfig.embeddingModel
+          )}" />
+          <datalist id="resource-embedding-model-list">${embeddingModelOptions}</datalist>
+          <div class="resource-field-actions">
+            <button id="resource-embedding-model-remove" type="button" class="secondary-button" ${
+              state.resourceConfig.embeddingModel ? "" : "disabled"
+            }>Remove saved embedding model</button>
+          </div>
+        </label>
+        <label class="field field-wide">
+          <span>Saved API Keys</span>
+          <select id="resource-api-key-slot">
+            <option value="">Select a saved API key slot</option>
+            ${apiKeyOptions}
+          </select>
+        </label>
+        <label class="field field-wide">
+          <span>API Key</span>
+          <input id="resource-api-key" type="password" placeholder="Required for hosted providers" value="${escapeHtml(
+            state.resourceConfig.apiKey
+          )}" />
+          <div class="resource-field-actions">
+            <button id="resource-api-key-remove" type="button" class="secondary-button" ${
+              state.resourceConfig.baseUrl || state.resourceConfig.apiKey ? "" : "disabled"
+            }>Remove saved API key</button>
+          </div>
+        </label>
+      </div>
+    </section>
+  `;
+
+  attachLlmSettingsHandlers(activePreset);
+}
+
+function renderResourcesPanel() {
+  const groupedFiles = groupResourceFiles(state.resourceFiles);
+  const summaryCount = state.resourceFiles.filter((file) => file.has_summary).length;
+  const unsummarizedCount = state.resourceFiles.length - summaryCount;
+  const selectedCount = selectedPdfPaths().length;
+  const fileSectionsMarkup = RESOURCE_FILE_SECTIONS.map((section, index) =>
+    resourceFileSectionMarkup(section, groupedFiles[section.key] || [], index === 0)
+  ).join("");
   const previewMarkup = state.resourcePreviewPath
     ? `
       <div class="resource-preview-shell">
@@ -1209,7 +1695,8 @@ function renderResourcesPanel() {
         <h3>Intake folder (batch)</h3>
         <p class="resource-help">
           Drop new PDFs in the library root. <strong>Scan Intake Folder</strong> refreshes the queue and bucket totals.
-          <strong>Process Intake Folder</strong> ingests, summarizes, and moves each incomplete queue file using the provider settings below (same as manual ingest/summarize).
+          <strong>Process Intake Folder</strong> ingests, summarizes, and moves each incomplete queue file using the saved settings from
+          <strong>LLMs and API-keys</strong>.
         </p>
         <div class="resource-actions">
           <button id="resource-intake-scan" type="button" class="secondary-button" ${state.intakeScanLoading || state.intakeProcessLoading ? "disabled" : ""}>
@@ -1225,59 +1712,13 @@ function renderResourcesPanel() {
         ${intakeProcessResultMarkup()}
       </section>
 
-      <div class="resource-grid">
-        <label class="field">
-          <span>Provider Preset</span>
-          <select id="resource-preset">
-            ${presetOptions}
-          </select>
-        </label>
-        <label class="field">
-          <span>Provider</span>
-          <select id="resource-provider">
-            ${providerOptions}
-          </select>
-        </label>
-        <label class="field">
-          <span>Base URL</span>
-          <input id="resource-base-url" type="text" list="resource-base-url-list" placeholder="Optional custom API base URL" value="${escapeHtml(state.resourceConfig.baseUrl)}" />
-          <datalist id="resource-base-url-list">${baseUrlOptions}</datalist>
-          <div class="resource-field-actions">
-            <button id="resource-base-url-remove" type="button" class="secondary-button" ${state.resourceConfig.baseUrl ? "" : "disabled"}>Remove saved URL</button>
-          </div>
-        </label>
-        <label class="field">
-          <span>Model</span>
-          <input id="resource-model" type="text" list="resource-model-list" placeholder="Required for summaries and synthesis" value="${escapeHtml(state.resourceConfig.model)}" />
-          <datalist id="resource-model-list">${modelOptions}</datalist>
-          <div class="resource-field-actions">
-            <button id="resource-model-remove" type="button" class="secondary-button" ${state.resourceConfig.model ? "" : "disabled"}>Remove saved model</button>
-          </div>
-        </label>
-        <label class="field">
-          <span>Embedding Model</span>
-          <input id="resource-embedding-model" type="text" list="resource-embedding-model-list" placeholder="Optional unless embeddings are enabled" value="${escapeHtml(state.resourceConfig.embeddingModel)}" />
-          <datalist id="resource-embedding-model-list">${embeddingModelOptions}</datalist>
-          <div class="resource-field-actions">
-            <button id="resource-embedding-model-remove" type="button" class="secondary-button" ${state.resourceConfig.embeddingModel ? "" : "disabled"}>Remove saved embedding model</button>
-          </div>
-        </label>
-        <label class="field field-wide">
-          <span>Saved API Keys</span>
-          <select id="resource-api-key-slot">
-            <option value="">Select a saved API key slot</option>
-            ${apiKeyOptions}
-          </select>
-        </label>
-        <label class="field field-wide">
-          <span>API Key</span>
-          <input id="resource-api-key" type="password" placeholder="Required for hosted providers" value="${escapeHtml(state.resourceConfig.apiKey)}" />
-          <div class="resource-field-actions">
-            <button id="resource-api-key-remove" type="button" class="secondary-button" ${state.resourceConfig.baseUrl || state.resourceConfig.apiKey ? "" : "disabled"}>Remove saved API key</button>
-          </div>
-        </label>
+      <p class="resource-help">
+        LLM provider, base URL, model, embedding model, and API-key settings are managed on
+        <strong>LLMs and API-keys</strong>.
+      </p>
+      <div class="resource-actions">
+        <button id="resource-open-llm-settings" type="button" class="secondary-button">Open LLMs and API-keys</button>
       </div>
-      <p class="resource-help">Provider, base URL, model, and embedding model defaults are saved by the writer. API keys stay only in this browser.</p>
 
       <label class="resource-checkbox-inline">
         <input id="resource-generate-embeddings" type="checkbox" ${state.resourceConfig.generateEmbeddings ? "checked" : ""} />
@@ -1291,23 +1732,7 @@ function renderResourcesPanel() {
         <button id="resource-summarize-unsummarized" type="button" class="secondary-button">Summarize All Unsummarized</button>
       </div>
 
-      <div class="resource-table-wrap">
-        <table class="editable-table resource-table">
-          <thead>
-            <tr>
-              <th>Select</th>
-              <th>PDF</th>
-              <th>Indexed</th>
-              <th>Chunks</th>
-              <th>Summary Note</th>
-              <th>Embeddings</th>
-              <th>Preview</th>
-              <th>Modified</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
+      ${fileSectionsMarkup}
     </section>
 
     <section class="form-section">
@@ -1343,106 +1768,14 @@ function renderResourcesPanel() {
       renderResourcesPanel();
     });
   });
-
-  document.getElementById("resource-preset")?.addEventListener("change", (event) => {
-    const preset = state.resourcePresets.find((item) => item.id === event.target.value);
-    if (!preset) {
-      return;
-    }
-    applyResourceDefaults(preset.provider, {
-      baseUrl: preset.baseUrl || "",
-      model: preset.model || "",
-      embeddingModel: preset.embeddingModel || "",
-    });
-    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
-    persistResourceSettings(true);
-    renderResourcesPanel();
+  document.getElementById("resource-open-llm-settings")?.addEventListener("click", () => {
+    renderForm("llms-and-api-keys");
   });
-
-  document.getElementById("resource-provider")?.addEventListener("change", async (event) => {
-    applyResourceDefaults(event.target.value || "ollama");
-    saveResourceSettingsState(state.resourceConfig.provider, state.resourceConfig);
-    await persistResourceSettings(true);
-    renderResourcesPanel();
-  });
-
-  ["resource-base-url", "resource-model", "resource-embedding-model", "resource-generate-embeddings"].forEach((id) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      syncResourceConfigFromDom();
-    });
-    document.getElementById(id)?.addEventListener("change", async () => {
-      const config = syncResourceConfigFromDom();
-      if (id === "resource-base-url") {
-        state.resourceConfig.apiKey = matchingApiKeyEntry(config.provider, config.baseUrl)?.value || config.apiKey;
-      }
-      saveResourceSettingsState(config.provider, state.resourceConfig);
-      if (id === "resource-base-url" && state.resourceConfig.apiKey) {
-        saveCurrentApiKeyLocally();
-      }
-      await persistResourceSettings(true);
-      renderResourcesPanel();
-    });
-  });
-
-  document.getElementById("resource-api-key")?.addEventListener("input", () => {
+  document.getElementById("resource-generate-embeddings")?.addEventListener("input", () => {
     syncResourceConfigFromDom();
   });
-  document.getElementById("resource-api-key")?.addEventListener("change", () => {
+  document.getElementById("resource-generate-embeddings")?.addEventListener("change", () => {
     syncResourceConfigFromDom();
-    saveCurrentApiKeyLocally();
-    renderResourcesPanel();
-  });
-
-  document.getElementById("resource-api-key-slot")?.addEventListener("change", (event) => {
-    const baseUrl = event.target.value || "";
-    const entry = matchingApiKeyEntry(state.resourceConfig.provider, baseUrl);
-    state.resourceConfig = {
-      ...state.resourceConfig,
-      baseUrl,
-      apiKey: entry?.value || "",
-    };
-    renderResourcesPanel();
-  });
-
-  document.getElementById("resource-base-url-remove")?.addEventListener("click", async () => {
-    const config = syncResourceConfigFromDom();
-    removeSavedProviderValue(config.provider, "baseUrl", config.baseUrl);
-    applyResourceDefaults(config.provider, {
-      baseUrl: getProviderSettings(config.provider).defaultBaseUrl || getPresetForProvider(config.provider)?.baseUrl || "",
-    });
-    await persistResourceSettings(true);
-    renderResourcesPanel();
-  });
-
-  document.getElementById("resource-model-remove")?.addEventListener("click", async () => {
-    const config = syncResourceConfigFromDom();
-    removeSavedProviderValue(config.provider, "model", config.model);
-    applyResourceDefaults(config.provider, {
-      model: getProviderSettings(config.provider).defaultModel || getPresetForProvider(config.provider)?.model || "",
-    });
-    await persistResourceSettings(true);
-    renderResourcesPanel();
-  });
-
-  document.getElementById("resource-embedding-model-remove")?.addEventListener("click", async () => {
-    const config = syncResourceConfigFromDom();
-    removeSavedProviderValue(config.provider, "embeddingModel", config.embeddingModel);
-    applyResourceDefaults(config.provider, {
-      embeddingModel:
-        getProviderSettings(config.provider).defaultEmbeddingModel || getPresetForProvider(config.provider)?.embeddingModel || "",
-    });
-    await persistResourceSettings(true);
-    renderResourcesPanel();
-  });
-
-  document.getElementById("resource-api-key-remove")?.addEventListener("click", () => {
-    const config = syncResourceConfigFromDom();
-    removeCurrentApiKeyLocally(config.provider, config.baseUrl);
-    state.resourceConfig = {
-      ...state.resourceConfig,
-      apiKey: matchingApiKeyEntry(config.provider, config.baseUrl)?.value || "",
-    };
-    renderResourcesPanel();
   });
 
   document.getElementById("resource-intake-scan")?.addEventListener("click", async () => {
@@ -1573,9 +1906,173 @@ function renderResourcesPanel() {
   document.getElementById("resource-topic-title")?.addEventListener("input", (event) => {
     state.resourceTopicTitle = event.target.value;
   });
-  if (activePreset) {
-    document.getElementById("resource-preset").value = activePreset.id;
+  attachResourceColumnResizeHandlers();
+  applyResourceColumnWidthsToTables();
+}
+
+function guideTableRowsMarkup() {
+  if (!state.guideDocs.length) {
+    return '<tr><td colspan="6">No guide markdown files matched the current inventory rules.</td></tr>';
   }
+
+  return state.guideDocs
+    .map(
+      (guide) => `
+        <tr>
+          <td><strong>${escapeHtml(guide.title)}</strong></td>
+          <td>${escapeHtml(guide.group || guide.category)}</td>
+          <td>${escapeHtml(guide.subgroup || guide.category)}</td>
+          <td>${escapeHtml(guide.description)}</td>
+          <td><code>${escapeHtml(guide.vault_path)}</code></td>
+          <td><a class="resource-open-link" href="${escapeHtml(guide.help_url)}" data-guide-link="${escapeHtml(guide.id)}">Open</a></td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function groupedGuideDocs() {
+  const grouped = [];
+  for (const guide of state.guideDocs) {
+    const groupName = guide.group || "Other";
+    const subgroupName = guide.subgroup || "General";
+    let group = grouped.find((entry) => entry.name === groupName);
+    if (!group) {
+      group = { name: groupName, subgroups: [] };
+      grouped.push(group);
+    }
+    let subgroup = group.subgroups.find((entry) => entry.name === subgroupName);
+    if (!subgroup) {
+      subgroup = { name: subgroupName, guides: [] };
+      group.subgroups.push(subgroup);
+    }
+    subgroup.guides.push(guide);
+  }
+  return grouped;
+}
+
+function guideCardMarkup(guide) {
+  const isActive = state.guideFocusId === guide.id;
+  return `
+    <article id="${guideCardId(guide.id)}" class="guide-card ${isActive ? "guide-card-active" : ""}">
+      <div class="guide-card-header">
+        <div>
+          <h4>${escapeHtml(guide.title)}</h4>
+          <div class="guide-card-meta">
+            <span>${escapeHtml(guide.group || guide.category)}</span>
+            <span>${escapeHtml(guide.subgroup || guide.category)}</span>
+            <code>${escapeHtml(guide.vault_path)}</code>
+          </div>
+        </div>
+        <a class="resource-open-link" href="${escapeHtml(guide.help_url)}" data-guide-link="${escapeHtml(guide.id)}">Permalink</a>
+      </div>
+      <p class="guide-card-description">${escapeHtml(guide.description)}</p>
+    </article>
+  `;
+}
+
+function guideGroupsMarkup() {
+  const groups = groupedGuideDocs();
+  if (!groups.length) {
+    return '<p class="resource-help">No grouped guides are available yet.</p>';
+  }
+
+  return groups
+    .map((group, groupIndex) => {
+      const groupHasFocus = group.subgroups.some((subgroup) =>
+        subgroup.guides.some((guide) => guide.id === state.guideFocusId)
+      );
+      const groupOpen = groupHasFocus || groupIndex === 0 ? "open" : "";
+      const subgroupMarkup = group.subgroups
+        .map((subgroup, subgroupIndex) => {
+          const subgroupHasFocus = subgroup.guides.some((guide) => guide.id === state.guideFocusId);
+          const subgroupOpen = subgroupHasFocus || (groupIndex === 0 && subgroupIndex === 0) ? "open" : "";
+          return `
+            <details class="guide-subgroup" ${subgroupOpen}>
+              <summary>${escapeHtml(subgroup.name)} <span class="guide-count">${subgroup.guides.length}</span></summary>
+              <div class="guide-cards">
+                ${subgroup.guides.map((guide) => guideCardMarkup(guide)).join("")}
+              </div>
+            </details>
+          `;
+        })
+        .join("");
+      return `
+        <details class="guide-group" ${groupOpen}>
+          <summary>${escapeHtml(group.name)} <span class="guide-count">${group.subgroups.reduce((count, subgroup) => count + subgroup.guides.length, 0)}</span></summary>
+          <div class="guide-group-body">
+            ${subgroupMarkup}
+          </div>
+        </details>
+      `;
+    })
+    .join("");
+}
+
+function attachGuideHandlers() {
+  document.querySelectorAll("[data-guide-link]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+        return;
+      }
+      event.preventDefault();
+      state.guideFocusId = event.currentTarget.dataset.guideLink || "";
+      syncFormUrl("help-and-guides");
+      renderGuidesPanel();
+      window.requestAnimationFrame(() => scrollGuideIntoView(state.guideFocusId));
+    });
+  });
+}
+
+function renderGuidesPanel() {
+  const categoryCounts = state.guideDocs.reduce((counts, guide) => {
+    const key = guide.group || guide.category;
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+  const categoryStats = Object.entries(categoryCounts)
+    .map(([category, count]) => `<span class="resource-stat">${escapeHtml(category)}: ${count}</span>`)
+    .join("");
+
+  formSections.innerHTML = `
+    <section class="form-section">
+      <h3>Guides By Function</h3>
+      <p class="resource-help">
+        The guides below are grouped by workflow function and content. Open a group, then open a subheading to browse the related guides.
+      </p>
+      ${state.guideDocsLoading ? '<p class="resource-help">Refreshing guide inventory…</p>' : ""}
+      ${state.guideDocsError ? `<p class="resource-help" role="alert"><strong>Guide inventory error:</strong> ${escapeHtml(state.guideDocsError)}</p>` : ""}
+      <div class="resource-stats">
+        <span class="resource-stat">Guides: ${state.guideDocs.length}</span>
+        ${categoryStats}
+      </div>
+      <div class="guide-groups">${guideGroupsMarkup()}</div>
+    </section>
+
+    <section class="form-section">
+      <h3>Guide Details Table</h3>
+      <p class="resource-help">
+        This table lists the same guides in one place with their group, subheading, explanation, vault path, and direct link into this page.
+      </p>
+      <div class="resource-table-wrap">
+        <table class="editable-table guide-table">
+          <thead>
+            <tr>
+              <th>Guide</th>
+              <th>Group</th>
+              <th>Subheading</th>
+              <th>Purpose</th>
+              <th>Vault Path</th>
+              <th>Jump</th>
+            </tr>
+          </thead>
+          <tbody>${guideTableRowsMarkup()}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+
+  attachGuideHandlers();
 }
 
 async function runResourceAction(endpoint, defaultError, payloadOverride = null) {
@@ -1650,13 +2147,22 @@ function renderForm(formKey) {
     formActions.classList.add("hidden");
     renderResourcesPanel();
     fetchResourceFiles(false);
+    syncFormUrl(formKey);
+    return;
+  }
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("form") !== formKey) {
-      params.set("form", formKey);
-      const nextUrl = `${window.location.pathname}?${params.toString()}`;
-      window.history.replaceState({}, "", nextUrl);
-    }
+  if (config.customRenderer === "llm-settings") {
+    formActions.classList.add("hidden");
+    renderLlmSettingsPanel();
+    syncFormUrl(formKey);
+    return;
+  }
+
+  if (config.customRenderer === "help-guides") {
+    formActions.classList.add("hidden");
+    renderGuidesPanel();
+    fetchGuideDocs(false);
+    syncFormUrl(formKey);
     return;
   }
 
@@ -1681,12 +2187,7 @@ function renderForm(formKey) {
     formSections.appendChild(sectionEl);
   }
 
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("form") !== formKey) {
-    params.set("form", formKey);
-    const nextUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, "", nextUrl);
-  }
+  syncFormUrl(formKey);
 }
 
 function collectFormData() {
@@ -1728,6 +2229,10 @@ function collectFormData() {
 
 async function handleSubmit(event) {
   event.preventDefault();
+  const config = formConfigs[state.activeForm];
+  if (config?.customRenderer) {
+    return;
+  }
   const payload = collectFormData();
 
   try {
@@ -1768,6 +2273,8 @@ form.addEventListener("submit", handleSubmit);
 
 const params = new URLSearchParams(window.location.search);
 state.activeForm = params.get("form") || "experiment-log";
+state.guideFocusId = params.get("guide") || "";
 state.collapsedGroups = loadSidebarState();
+state.resourceColumnWidths = loadResourceColumnWidths();
 applySidebarState();
 fetchOptions();

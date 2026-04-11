@@ -215,6 +215,311 @@ def note_choices(folder_key: str) -> list[str]:
     )
 
 
+GUIDE_DESCRIPTION_OVERRIDES = {
+    "ELN_vault/Help & Guides Index.md": "Directory of the main onboarding and reference documents, with deep links back into the writer's Help & Guides page.",
+    "ELN_vault/Quick Start Guide.md": "Fast onboarding for the current APT/FIM vault workflow, from settings through writer-based note creation.",
+    "ELN_vault/Lab Log Writer.md": "Explains what the local writer does, how to start it, and which forms it provides.",
+    "ELN_vault/Home.md": "The main vault landing page for browsing dashboards, lists, and working areas inside Obsidian.",
+    "ELN_vault/ELN Dashboard.md": "Overview dashboard for the ELN's operational pages and higher-level navigation.",
+    "ELN_vault/assets/ELN Settings.md": "Defines the YAML-backed folder paths, statuses, gauges, operators, and note defaults used by the writer and vault.",
+    "ELN_vault/Resources/APT-FIM/Library.md": "Reference page for the APT/FIM literature library and the PDF intake workflow.",
+    "ELN_vault/Lists/Operations/Startup Checklists.md": "Explains where startup checklist records live and how they fit into the operating workflow.",
+    "ELN_vault/Lists/Operations/Shutdown Checklists.md": "Explains where shutdown checklist records live and how they fit into the operating workflow.",
+    "ELN_vault/Lists/Operations/Instrument Configurations.md": "Reference page for instrument configuration records, interlocks, defaults, and gauge mappings.",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md": "Legacy getting-started walkthrough for the broader ELN structure, with notes about the current APT/FIM writer workflow.",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/APT FIM Template Workflow.md": "Documents the intended APT/FIM note model and how the specialized templates fit together.",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/Obsidian ELN Python App.md": "Background on the Python-based writer app that creates notes directly in the vault.",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/Install Python.md": "Setup guide for installing Python so the local writer and scripts can run on this machine.",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/What Are Embeddings And What Are They For.md": "Explains what embeddings are in this project, what they enable later, and what they are not used for yet.",
+    "ELN_vault/Notes/HowTos/Visual Studio Code/Install Visual Studio Code.md": "Installation guide for Visual Studio Code, useful when editing vault scripts or working on the writer codebase.",
+    "tools/lab-log-writer/README.md": "Developer-facing overview of the lab-log-writer codebase and local server entry point.",
+}
+
+GUIDE_TITLE_OVERRIDES = {
+    "ELN_vault/Home.md": "Home",
+    "ELN_vault/ELN Dashboard.md": "ELN Dashboard",
+    "ELN_vault/Notes/HowTos/Getting started with Obsidian/How to Boost Your Productivity for Scientific Research Using Obsidian.md": "How to Boost Your Productivity for Scientific Research Using Obsidian",
+    "ELN_vault/Notes/HowTos/Getting started with Obsidian/Obsidian Plugin Documentation/Dataview.md": "Dataview Plugin Guide",
+    "ELN_vault/Notes/HowTos/Getting started with Obsidian/Obsidian Tutorial for Academic Writing.md": "Obsidian Tutorial for Academic Writing",
+    "ELN_vault/Notes/HowTos/Getting started with Obsidian/Obsidian Plugin Documentation/Banners.md": "Banners Plugin Guide",
+    "ELN_vault/Notes/HowTos/Obsidian ELN/Install Python.md": "Install Python",
+}
+
+GUIDE_INCLUDE_EXACT = {
+    "ELN_vault/Help & Guides Index.md",
+    "ELN_vault/Quick Start Guide.md",
+    "ELN_vault/Lab Log Writer.md",
+    "ELN_vault/Home.md",
+    "ELN_vault/ELN Dashboard.md",
+    "ELN_vault/assets/ELN Settings.md",
+    "ELN_vault/Resources/APT-FIM/Library.md",
+    "ELN_vault/Lists/Operations/Startup Checklists.md",
+    "ELN_vault/Lists/Operations/Shutdown Checklists.md",
+    "ELN_vault/Lists/Operations/Instrument Configurations.md",
+    "tools/lab-log-writer/README.md",
+}
+
+GUIDE_INCLUDE_PREFIXES = (
+    "ELN_vault/Notes/HowTos/",
+)
+
+GUIDE_EXCLUDE_PREFIXES = (
+    ".cursor/",
+    ".git/",
+    ".specstory/",
+    "docs/superpowers/",
+    "ELN_vault/Contacts/",
+    "ELN_vault/Daily Notes/",
+    "ELN_vault/Resources/APT-FIM/Summaries/",
+    "ELN_vault/Tasks/",
+    "ELN_vault/Writing/",
+    "ELN_vault/assets/templates/",
+    "ELN_vault/assets/literature templates/",
+)
+
+GUIDE_PRIORITY = {
+    "ELN_vault/Help & Guides Index.md": 0,
+    "ELN_vault/Quick Start Guide.md": 1,
+    "ELN_vault/Lab Log Writer.md": 2,
+    "ELN_vault/Notes/HowTos/Obsidian ELN/What Are Embeddings And What Are They For.md": 3,
+    "ELN_vault/Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md": 4,
+    "ELN_vault/assets/ELN Settings.md": 5,
+    "ELN_vault/Resources/APT-FIM/Library.md": 6,
+    "ELN_vault/Lists/Operations/Instrument Configurations.md": 7,
+    "ELN_vault/Lists/Operations/Startup Checklists.md": 8,
+    "ELN_vault/Lists/Operations/Shutdown Checklists.md": 9,
+}
+
+GUIDE_GROUP_PRIORITY = {
+    "Getting Started": 0,
+    "Writer And Resources": 1,
+    "Operations": 2,
+    "Obsidian Reference": 3,
+    "Vault Navigation": 4,
+    "Tooling": 5,
+}
+
+GUIDE_SUBGROUP_PRIORITY = {
+    ("Getting Started", "Core Workflow"): 0,
+    ("Getting Started", "Vault Setup"): 1,
+    ("Writer And Resources", "Writer Usage"): 0,
+    ("Writer And Resources", "Literature Workflow"): 1,
+    ("Operations", "Configuration"): 0,
+    ("Operations", "Checklists"): 1,
+    ("Obsidian Reference", "Writing And Basics"): 0,
+    ("Obsidian Reference", "Layout And Plugins"): 1,
+    ("Vault Navigation", "Dashboards"): 0,
+    ("Tooling", "Editor Setup"): 0,
+}
+
+
+def _relative_repo_path(path: Path, repo_root: Path) -> str:
+    return rel_to_posix(path.relative_to(repo_root))
+
+
+def is_guide_markdown(path: Path, repo_root: Path, vault_root: Path) -> bool:
+    if path.suffix.lower() != ".md":
+        return False
+    if not path.is_file():
+        return False
+    if vault_root not in path.parents and repo_root / "tools" / "lab-log-writer" not in path.parents:
+        return False
+    relative_path = _relative_repo_path(path, repo_root)
+    if any(relative_path.startswith(prefix) for prefix in GUIDE_EXCLUDE_PREFIXES):
+        return False
+    if relative_path in GUIDE_INCLUDE_EXACT:
+        return True
+    return any(relative_path.startswith(prefix) for prefix in GUIDE_INCLUDE_PREFIXES)
+
+
+def guide_slug(relative_path: str) -> str:
+    stem = Path(relative_path).with_suffix("").as_posix().replace("/", "-").lower()
+    return re.sub(r"[^a-z0-9-]+", "-", stem).strip("-")
+
+
+def guide_title(path: Path, content: str, relative_path: str) -> str:
+    if relative_path in GUIDE_TITLE_OVERRIDES:
+        return GUIDE_TITLE_OVERRIDES[relative_path]
+    for line in content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            return stripped[2:].strip()
+    return path.stem
+
+
+def guide_category(relative_path: str) -> str:
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Obsidian ELN/"):
+        return "Obsidian ELN"
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Getting started with Obsidian/"):
+        return "Obsidian Basics"
+    if relative_path.startswith("ELN_vault/Lists/Operations/"):
+        return "Operations"
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Visual Studio Code/"):
+        return "Tooling Guides"
+    if relative_path.startswith("ELN_vault/Resources/"):
+        return "Resources"
+    if relative_path.startswith("ELN_vault/assets/"):
+        return "Vault Settings"
+    if relative_path.startswith("tools/lab-log-writer/"):
+        return "Writer Tooling"
+    return "Vault Overview"
+
+
+def guide_grouping(relative_path: str) -> tuple[str, str]:
+    if relative_path in {
+        "ELN_vault/Help & Guides Index.md",
+        "ELN_vault/Quick Start Guide.md",
+        "ELN_vault/Notes/HowTos/Obsidian ELN/Obsidian ELN - Getting started.md",
+        "ELN_vault/Notes/HowTos/Obsidian ELN/APT FIM Template Workflow.md",
+    }:
+        return ("Getting Started", "Core Workflow")
+    if relative_path in {
+        "ELN_vault/assets/ELN Settings.md",
+        "ELN_vault/Notes/HowTos/Obsidian ELN/Install Python.md",
+    }:
+        return ("Getting Started", "Vault Setup")
+    if relative_path in {
+        "ELN_vault/Lab Log Writer.md",
+        "ELN_vault/Notes/HowTos/Obsidian ELN/Obsidian ELN Python App.md",
+        "tools/lab-log-writer/README.md",
+    }:
+        return ("Writer And Resources", "Writer Usage")
+    if relative_path in {
+        "ELN_vault/Resources/APT-FIM/Library.md",
+        "ELN_vault/Notes/HowTos/Obsidian ELN/What Are Embeddings And What Are They For.md",
+    }:
+        return ("Writer And Resources", "Literature Workflow")
+    if relative_path == "ELN_vault/Lists/Operations/Instrument Configurations.md":
+        return ("Operations", "Configuration")
+    if relative_path in {
+        "ELN_vault/Lists/Operations/Startup Checklists.md",
+        "ELN_vault/Lists/Operations/Shutdown Checklists.md",
+    }:
+        return ("Operations", "Checklists")
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Getting started with Obsidian/Multi Column Dataview/"):
+        return ("Obsidian Reference", "Layout And Plugins")
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Getting started with Obsidian/Obsidian Plugin Documentation/"):
+        return ("Obsidian Reference", "Layout And Plugins")
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Getting started with Obsidian/"):
+        return ("Obsidian Reference", "Writing And Basics")
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Visual Studio Code/"):
+        return ("Tooling", "Editor Setup")
+    if relative_path in {"ELN_vault/Home.md", "ELN_vault/ELN Dashboard.md"}:
+        return ("Vault Navigation", "Dashboards")
+    return ("Vault Navigation", "Dashboards")
+
+
+def _clean_markdown_summary_text(text: str) -> str:
+    cleaned = text
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", cleaned)
+    cleaned = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", cleaned)
+    cleaned = re.sub(r"\[\[([^\]|]+)\|([^\]]+)\]\]", r"\2", cleaned)
+    cleaned = re.sub(r"\[\[([^\]]+)\]\]", r"\1", cleaned)
+    cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
+    cleaned = re.sub(r"\[![^\]]+\]", " ", cleaned)
+    cleaned = cleaned.replace(">", " ")
+    cleaned = re.sub(r"\{:\s*[^}]+\}", " ", cleaned)
+    cleaned = re.sub(r"https?://\S+", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def plain_language_summary(content: str, limit: int = 220) -> str:
+    lines = content.splitlines()
+    filtered: list[str] = []
+    in_frontmatter = bool(lines and lines[0].strip() == "---")
+    in_code_block = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if in_frontmatter:
+            if index > 0 and stripped == "---":
+                in_frontmatter = False
+            continue
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+            continue
+        if in_code_block or not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("{:"):
+            continue
+        lowered = stripped.lower()
+        if lowered.startswith("css snippet file:"):
+            continue
+        if lowered.startswith("toc") or "{:toc}" in lowered:
+            continue
+        cleaned = _clean_markdown_summary_text(stripped)
+        if not cleaned:
+            continue
+        filtered.append(cleaned)
+        if len(" ".join(filtered)) >= limit:
+            break
+    if not filtered:
+        return "Open this guide for the full note."
+    return textwrap.shorten(" ".join(filtered), width=limit, placeholder="...")
+
+
+def guide_preview(content: str, limit: int = 280) -> str:
+    return plain_language_summary(content, limit=limit)
+
+
+def guide_description(relative_path: str, title: str, preview: str) -> str:
+    if relative_path in GUIDE_DESCRIPTION_OVERRIDES:
+        return GUIDE_DESCRIPTION_OVERRIDES[relative_path]
+    if preview and preview != "Open this guide for the full note.":
+        return preview
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Getting started with Obsidian/"):
+        return f"Obsidian onboarding reference covering {title.lower()}."
+    if relative_path.startswith("ELN_vault/Notes/HowTos/Obsidian ELN/"):
+        return f"Obsidian ELN workflow reference covering {title.lower()}."
+    if relative_path.startswith("ELN_vault/Lists/Operations/"):
+        return f"Operations reference page for {title.lower()}."
+    return preview or f"Reference document: {title}."
+
+
+def build_guide_inventory(repo_root: Path | None = None, vault_root: Path | None = None) -> list[dict[str, str]]:
+    repo_root = repo_root or REPO_ROOT
+    vault_root = vault_root or VAULT_ROOT
+    guides: list[dict[str, str]] = []
+    for path in repo_root.rglob("*.md"):
+        if not is_guide_markdown(path, repo_root, vault_root):
+            continue
+        relative_path = _relative_repo_path(path, repo_root)
+        content = read_file(path)
+        preview = guide_preview(content)
+        title = guide_title(path, content, relative_path)
+        guide_id = guide_slug(relative_path)
+        group, subgroup = guide_grouping(relative_path)
+        guides.append(
+            {
+                "id": guide_id,
+                "title": title,
+                "category": guide_category(relative_path),
+                "group": group,
+                "subgroup": subgroup,
+                "relative_path": relative_path,
+                "vault_path": relative_path[10:] if relative_path.startswith("ELN_vault/") else relative_path,
+                "description": guide_description(relative_path, title, preview),
+                "preview": preview,
+                "help_url": f"http://{HOST}:{PORT}/?form=help-and-guides&guide={guide_id}",
+            }
+        )
+    return sorted(
+        guides,
+        key=lambda item: (
+            GUIDE_PRIORITY.get(item["relative_path"], 1000),
+            GUIDE_GROUP_PRIORITY.get(item["group"], 1000),
+            GUIDE_SUBGROUP_PRIORITY.get((item["group"], item["subgroup"]), 1000),
+            item["title"].lower(),
+        ),
+    )
+
+
+def get_guide_inventory() -> dict[str, object]:
+    guides = build_guide_inventory()
+    return {"guides": guides, "count": len(guides)}
+
+
 def frontmatter(content: str) -> str:
     return f"---\n{content.strip()}\n---"
 
@@ -1674,6 +1979,10 @@ class LabLogRequestHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/resources/settings":
             payload = json.dumps(get_resource_settings()).encode("utf-8")
+            self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
+            return
+        if path == "/api/guides/index":
+            payload = json.dumps(get_guide_inventory()).encode("utf-8")
             self._send(HTTPStatus.OK, payload, "application/json; charset=utf-8")
             return
         if path == "/api/resources/pdf":

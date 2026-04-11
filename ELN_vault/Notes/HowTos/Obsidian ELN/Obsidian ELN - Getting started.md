@@ -104,30 +104,7 @@ Obsidian ELN provides a set of smart templates to make the collection of meta da
 
 Currently there are templates for resources, processes, projects, samples and analyses. 
 
-![[Obsidian ELN - Struktur.png]]
-
-#### Resources
-
-Resources are materials or devices that you use in your lab to create a sample or to perform an analysis of a sample.
-
-##### Chemicals
-
-New Chemicals can be added from the [[Chemicals]] note in the `List` folder, which provides an overview about all chemicals you have added to your Obsidian ELN vault. To add a new chemical just push the **Add Chemical** button at the top of the note.
-
-Chemicals can be categorized by a *type* and *field of use* attribute.  To assure that these categories are used consistently you will be asked to select a type and field of use from a drop down menu when ever you add a new chemical. If you want to customize the predefined types and fields of use to better reflect your type of research you can edit the chemical type and chemical field of use YAML section of the [[ELN Settings]] file.
-
-##### Electrodes
-
-
-
-##### Cells
-
-
 ##### Device And Instrument Notes
-
-The original device-, instrument-, process-, project-, sample-, and analysis-specific note flows are no longer part of the active vault structure.
-
-Use the current APT/FIM pages instead:
 
 - [[Lists/Operations/Instrument Configurations|Instrument Configurations]] for machine state, interlocks, gauges, and operating defaults.
 - [[Lists/Experiment/Experiment Series|Experiment Series]] for campaign planning.
@@ -140,9 +117,6 @@ Use the current APT/FIM pages instead:
 ## Step 7: ELN List Views
 
 In the section above you already got to know the list view pages for 
-- [[Chemicals]]
-
-Additional list views are available for
 - [[Lists/Reference/Contacts|Contacts]]
 - [[Lists/Operations/Daily Notes|Daily Notes]]
 - [[Labs]]
