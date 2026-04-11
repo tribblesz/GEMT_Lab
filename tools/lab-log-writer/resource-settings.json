@@ -1,0 +1,56 @@
+{
+  "defaultProvider": "lmstudio",
+  "providers": {
+    "ollama": {
+      "provider": "ollama",
+      "defaultBaseUrl": "http://localhost:11434",
+      "baseUrls": [
+        "http://localhost:11434"
+      ],
+      "defaultModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "models": [
+        "gemma-4-26B-A4B-it-Q4_K_M"
+      ],
+      "defaultEmbeddingModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "embeddingModels": [
+        "gemma-4-26B-A4B-it-Q4_K_M",
+        "nomic-embed-text"
+      ]
+    },
+    "lmstudio": {
+      "provider": "lmstudio",
+      "defaultBaseUrl": "http://127.0.0.1:1234/v1",
+      "baseUrls": [
+        "http://127.0.0.1:1234/v1"
+      ],
+      "defaultModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "models": [
+        "gemma-4-26B-A4B-it-Q4_K_M",
+        "local-model"
+      ],
+      "defaultEmbeddingModel": "gemma-4-26B-A4B-it-Q4_K_M",
+      "embeddingModels": [
+        "gemma-4-26B-A4B-it-Q4_K_M",
+        "text-embedding-model"
+      ]
+    },
+    "openai": {
+      "provider": "openai",
+      "defaultBaseUrl": "",
+      "baseUrls": [],
+      "defaultModel": "",
+      "models": [],
+      "defaultEmbeddingModel": "",
+      "embeddingModels": []
+    },
+    "anthropic": {
+      "provider": "anthropic",
+      "defaultBaseUrl": "",
+      "baseUrls": [],
+      "defaultModel": "",
+      "models": [],
+      "defaultEmbeddingModel": "",
+      "embeddingModels": []
+    }
+  }
+}

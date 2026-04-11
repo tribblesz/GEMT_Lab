@@ -14,7 +14,7 @@ tags:
 ```dataviewjs
 await dv.view("/assets/javascript/dataview/views/note_header", {});
 ```
-# Obisidan ELN - Getting Started Guide
+# Obsidian ELN - Getting Started Guide
 
 > [!Warning]
 > This guide reflects the original general-purpose ELN structure and is no longer the active onboarding path for this vault.
@@ -22,6 +22,19 @@ await dv.view("/assets/javascript/dataview/views/note_header", {});
 > Use [[Quick Start Guide]] for the current APT/FIM workflow built around experiment series, experiment runs, specimens, instrument configurations, startup checklists, shutdown checklists, and data records.
 >
 > For template-specific instructions, use [[APT FIM Template Workflow]].
+
+> [!Info] Current APT/FIM workflow
+> The active workflow now uses [[Lab Log Writer]] as the main structured entry path into the vault.
+>
+> Before creating notes, update [[ELN Settings]] so the folder paths, gases, gauge labels, statuses, and note defaults match the instrument.
+>
+> Use the writer for experiment series, experiment logs, MCP image logs, ion column image logs, instrument configurations, specimens, startup checklists, shutdown checklists, daily notes, meetings, contacts, task lists, and general notes.
+>
+> The writer's [Resources panel](http://127.0.0.1:8765/?form=resource-library) now supports PDF intake, summarization, topic synthesis, and optional embeddings for `Resources/APT-FIM`.
+>
+> New intake PDFs start in `Resources/APT-FIM/PDFs`. Successful intake processing moves them to `Resources/APT-FIM/PDFs/Processed`; failed runs move them to `Resources/APT-FIM/PDFs/Failed`; extracted chunk data is stored in `Resources/APT-FIM/.index`.
+>
+> Provider, base URL, model, and embedding-model defaults are saved by the writer, while API keys stay only in the current browser session/local storage.
 
 > [!Example] TOC
 >   - [[#Step 1 Familiarize yourself with Obsidian]]
@@ -71,21 +84,19 @@ Paper notebooks have served researches well over decades and are still extensive
 
 Obsidian ELN uses a YAML note file to store some basic settings of the ELN. These settings will be used by the template files and can be customized to your needs. The settings file can be found in the assets folder and is called [[ELN Settings]].
 
-It is recommended that you edit the YAML *note* and *operators* section as well as *local* and *remote data folder*. The note author defined in the ELN Settings file will be automatically added to all your notes that you create with the predefined templates. It is assumed that there is typically only one main author who creates notes in your Obsidian vault. However, you may share notes with other users for devices, instruments or other and the author field helps you to identify who created the note in first place.
+For the current APT/FIM vault, it is recommended that you review the YAML sections for folders, note defaults, experiment-series and experiment-log statuses, gases, specimen types, instrument-configuration types, and the default gauge labels for the main chamber, load lock, and ion column. The note author defined in the ELN Settings file will be automatically added to the notes created with the writer.
 
-The operators section lets you define one or more operators and its initials. The operator field will be used when you create a new sample or analysis note to record who created the sample or performed the analysis. The first operator will in most cases be identical with the note author but you may define additional operators if you collaborate with colleagues to exchange samples or perform analyses.
+The operator list and gauge labels are used directly by the APT/FIM forms in [[Lab Log Writer]], so the settings should match the actual instrument readbacks and the people who will create experiment logs, image logs, and checklists.
 
-Obsidian ELN lets you link your analysis directly to your experimental data folder and or data file. Obsidian assumes that your experimental data is located in your local data folder according to the following path scheme:
+The same settings file also controls the resource-library folders used by the writer:
 
-***local_data_folder/sample_name/analysis_method***
+- `Resources/APT-FIM/PDFs`
+- `Resources/APT-FIM/Summaries`
+- `Resources/APT-FIM/Topics`
+- `Resources/APT-FIM/.index`
 
-and your remote data:
-
-***remote_data_folder/year/analysis_method/operator***
-
-
-![[ELN Settings YAML.png|500]] 
-***Figure:** YAML section of the ELN Settings file to configure default note author, operators and data folders.*
+![[ELN Settings YAML.png|500]]
+***Figure:** YAML section of the ELN Settings file used to configure note defaults, operators, folders, and standard APT/FIM readbacks.*
 
 ## Step 6: Obsidian ELN core structure
 
@@ -122,6 +133,9 @@ Use the current APT/FIM pages instead:
 - [[Lists/Experiment/Experiment Series|Experiment Series]] for campaign planning.
 - [[Lists/Experiment/Specimens|Specimens]] for physical items under test.
 - [[Lists/Experiment/Experiment Logs|Experiment Logs]] for actual operating sessions.
+- [[Lists/Experiment/MCP Image Logs|MCP Image Logs]] and [[Lists/Experiment/Ion Column Image Logs|Ion Column Image Logs]] for per-image metadata that links back to experiment logs.
+- [[Resources/APT-FIM/Library|APT/FIM Resources]] for PDF intake, summary notes, topic syntheses, and literature indexing state.
+- [[Lab Log Writer]] for the local GUI used to create current APT/FIM notes and run the resource-library workflow.
 
 ## Step 7: ELN List Views
 
@@ -135,6 +149,7 @@ Additional list views are available for
 - [[Lists/Operations/Meetings|Meetings]]
 - [[Lists/Experiment/Notes|Notes]]
 - [[Lists/Reference/Publications|Publications]]
+- [[Resources/APT-FIM/Library|APT/FIM Resources]]
 
 ## Step 8: Change the look of Obsidian and your notes
 
