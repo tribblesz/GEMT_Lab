@@ -16,6 +16,7 @@ if str(MODULE_ROOT) not in sys.path:
     sys.path.insert(0, str(MODULE_ROOT))
 
 from resources import (
+    _resolve_index_paths_for_scan,
     build_provider_presets,
     ensure_directories,
     ensure_resource_subdirectories,
@@ -1345,6 +1346,15 @@ def _resource_folders(paths: dict[str, Path]) -> dict[str, str]:
     }
 
 
+def _workflow_status_token(value: object) -> str | None:
+    if value is None:
+        return None
+    token = str(value).strip().lower()
+    if token in {"pending", "processing", "done", "failed"}:
+        return token
+    return None
+
+
 def _resource_item_state(
     item: dict[str, object],
     *,
@@ -1353,15 +1363,23 @@ def _resource_item_state(
     failed_root: Path,
 ) -> dict[str, object]:
     pdf_path = Path(str(item["pdf_path"]))
-    index_payload = read_json(index_dir / f"{pdf_index_key(pdf_path)}.json", {})
-    explicit_status = str(index_payload.get("status", "")).strip().lower()
+    _resolved_index_path, _resolved_emb_path, index_payload = _resolve_index_paths_for_scan(pdf_path, index_dir)
 
-    if explicit_status in {"pending", "processing", "done", "failed"}:
-        status = explicit_status
+    # Prefer scan metadata (index_status) from the library scan, then the same
+    # resolver used above — never let summary heuristics override a durable token.
+    scan_token = _workflow_status_token(item.get("index_status"))
+    index_token = _workflow_status_token(index_payload.get("status"))
+
+    if scan_token is not None:
+        status = scan_token
+    elif index_token is not None:
+        status = index_token
     elif _is_within(pdf_path, failed_root):
         status = "failed"
     elif _is_within(pdf_path, processed_root):
         status = "done"
+    elif str(index_payload.get("error_message", "")).strip():
+        status = "failed"
     elif is_processing_complete(item, require_embeddings=False):
         status = "done"
     else:

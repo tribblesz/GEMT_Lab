@@ -251,16 +251,16 @@ def _resolve_index_paths_for_scan(
     The path-based key can change when a PDF is moved (e.g. Failed → intake retry).
     If the direct key file is missing, fall back to an index JSON in the same stem
     family whose stored content hash matches the file on disk.
+
+    When the direct key file exists but has a weaker workflow status than a
+    hash-matched sibling (e.g. empty or partial index shadowing a durable ``failed``
+    record from a prior path), prefer the hash-matched payload so scan and API
+    status stay consistent.
     """
     pdf_path = Path(pdf_path)
     index_dir = Path(index_dir)
     direct_key = pdf_index_key(pdf_path)
     direct_index = index_dir / f"{direct_key}.json"
-    if direct_index.is_file():
-        cached = read_json(direct_index, {})
-        emb = index_dir / f"{direct_key}.embeddings.json"
-        return direct_index, emb, cached
-
     stem_slug = slugify(pdf_path.stem).lower()
     try:
         content_hash = file_sha256(pdf_path)
@@ -286,6 +286,16 @@ def _resolve_index_paths_for_scan(
             best_mtime = mtime
             best_path = candidate
             best_cached = cached
+
+    if direct_index.is_file():
+        direct_cached = read_json(direct_index, {})
+        pri_d = _index_status_priority_for_scan_resolution(direct_cached.get("status"))
+        pri_h = _index_status_priority_for_scan_resolution(best_cached.get("status")) if best_path is not None else -1
+        if best_path is not None and pri_h > pri_d:
+            key = Path(best_path.name).stem
+            return best_path, index_dir / f"{key}.embeddings.json", best_cached
+        emb = index_dir / f"{direct_key}.embeddings.json"
+        return direct_index, emb, direct_cached
 
     if best_path is not None:
         key = Path(best_path.name).stem
